@@ -22,7 +22,13 @@ function rndType(){let c=FRUITS[(Math.random()*4)|0],n=0;while(n++<12&&history.l
 function shooterType(){const counts=[0,0,0,0];fruits.forEach(f=>counts[f.type]++);const a=FRUITS.filter(t=>counts[t]>0);return (a.length?a:FRUITS)[(Math.random()*(a.length||4))|0];}
 function mkFruit(type,d){return{id:Math.random().toString(36).slice(2),type,d,renderD:d,matching:false,matchAge:0};}
 function seed(){for(let i=0;i<CFG.initial;i++){fruits.push(mkFruit(rndType(),i*CFG.spacing));spawned++;}}
-function trySpawn(){if(spawned>=CFG.total)return;if(fruits.length&&fruits[0].d<CFG.spacing+4)return;fruits.unshift(mkFruit(rndType(),0));spawned++;}
+function trySpawn(){
+  if(spawned>=CFG.total)return;
+  if(fruits.length&&fruits[0].d<CFG.spacing)return;
+  const spawnD=fruits.length?Math.max(0,fruits[0].d-CFG.spacing):0;
+  fruits.unshift(mkFruit(rndType(),spawnD));
+  spawned++;
+}
 function speed(){const p=spawned/CFG.total;return CFG.baseSpeed*(p>=.7?1.3:p>=.3?1.15:1)}
 function findMatch(index){if(index<0||index>=fruits.length)return null;const t=fruits[index].type;let l=index,r=index;while(l>0&&fruits[l-1].type===t)l--;while(r+1<fruits.length&&fruits[r+1].type===t)r++;return r-l+1>=CFG.match?{left:l,right:r,count:r-l+1}:null;}
 function insertFruit(type,index,renderD){index=Math.max(0,Math.min(index,fruits.length));let target=0;if(!fruits.length)target=Math.max(0,renderD);else if(index<fruits.length){target=fruits[index].d-CFG.spacing;for(let i=0;i<index;i++)fruits[i].d-=CFG.spacing;}else{const old=fruits.at(-1).d;for(const f of fruits)f.d-=CFG.spacing;target=old;}const f=mkFruit(type,target);f.renderD=renderD;fruits.splice(index,0,f);return f;}
@@ -62,7 +68,7 @@ function update(dt){
 
   // During pullback, pause the normal forward march. Only the front segment
   // is allowed to move backward in updatePull().
-  if(state!=='pulling'){
+  if(state==='playing'||state==='inserting'){
     const s=speed();
     for(const f of fruits)f.d+=s*dt;
   }
