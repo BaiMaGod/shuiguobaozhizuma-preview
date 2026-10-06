@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 const W=720,H=1280;
-const CFG={fruitR:31,spacing:58,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.14,score:10,losePadding:12};
+const CFG={fruitR:31,spacing:54,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.14,score:10,losePadding:12};
 const FRUITS=[0,1,2,3];
 const COLORS={
   0:{main:'#f04f66',accent:'#6dcc59',juice:'#ff5570',dark:'#263329'},
@@ -29,14 +29,61 @@ function insertFruit(type,index,renderD){index=Math.max(0,Math.min(index,fruits.
 function beginMatch(m){combo++;maxCombo=Math.max(maxCombo,combo);currentMatch=m;state='resolving';stateTimer=CFG.matchDelay;for(let i=m.left;i<=m.right;i++){fruits[i].matching=true;fruits[i].matchAge=0;const p=pointAt(fruits[i].renderD);burst(p.x,p.y,fruits[i].type,1+(combo-1)*.22);}if(combo>=2){shake=.11;shakeMag=Math.min(6,2+combo*.8);}}
 function finishMatch(){if(!currentMatch)return;const count=currentMatch.count,mult=1+Math.max(0,combo-1)*.5;score+=Math.round(count*CFG.score*mult);const left=currentMatch.left;fruits.splice(left,count);const hasEntrance=left-1>=0,hasExit=left<fruits.length;currentMatch=null;if(hasEntrance&&hasExit){pullback={boundary:left};state='pulling';}else finishCombo();}
 function finishCombo(){pendingId=-1;pullback=null;currentMatch=null;combo=0;state='playing';}
-function updatePull(dt){if(!pullback)return finishCombo();const b=pullback.boundary;if(b<=0||b>=fruits.length)return finishCombo();const left=fruits[b-1],right=fruits[b],desired=right.d-CFG.spacing,gap=desired-left.d;if(gap<=.3){const correction=desired-left.d;for(let i=0;i<b;i++)fruits[i].d+=correction;const m=findMatch(b-1);return m?beginMatch(m):finishCombo();}const sh=Math.min(gap,CFG.pullSpeed*dt);for(let i=0;i<b;i++)fruits[i].d+=sh;}
+function updatePull(dt){
+  if(!pullback)return finishCombo();
+  const b=pullback.boundary;
+  if(b<=0||b>=fruits.length)return finishCombo();
+
+  // The segment closer to the exit rolls BACKWARD toward the rear segment.
+  // This is the classic Zuma retraction behavior after a match.
+  const rearTail=fruits[b-1];
+  const frontHead=fruits[b];
+  const desiredFrontDistance=rearTail.d+CFG.spacing;
+  const gap=frontHead.d-desiredFrontDistance;
+
+  if(gap<=.3){
+    const correction=desiredFrontDistance-frontHead.d;
+    for(let i=b;i<fruits.length;i++)fruits[i].d+=correction;
+    const m=findMatch(b-1);
+    return m?beginMatch(m):finishCombo();
+  }
+
+  const shift=Math.min(gap,CFG.pullSpeed*dt);
+  for(let i=b;i<fruits.length;i++)fruits[i].d-=shift;
+}
 function burst(x,y,type,str=1){const c=COLORS[type];const n=Math.min(18,Math.round(8+str*3));for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=115+Math.random()*(145+str*20);particles.push({x:x+(Math.random()-.5)*12,y:y+(Math.random()-.5)*12,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,g:380+Math.random()*220,life:.32+Math.random()*.34,max:1,r:3+Math.random()*(5+str),color:i%4===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*9});}waves.push({x,y,r:16,life:.30,max:.30,color:c.juice});}
 function fire(x,y){if(state!=='playing'||projectile)return;let dx=x-360,dy=y-1135,l=Math.hypot(dx,dy);if(l<20)return;dx/=l;dy/=l;projectile={type:current,x:360,y:1135,vx:dx*CFG.projectileSpeed,vy:dy*CFG.projectileSpeed};combo=0;if(!startedShot)startedShot=true;current=next;next=shooterType();}
 function updateProjectile(dt){const p=projectile;if(!p||state!=='playing')return;p.x+=p.vx*dt;p.y+=p.vy*dt;let hit=-1,best=Infinity;const rr=CFG.collisionR**2;for(let i=0;i<fruits.length;i++){const fp=pointAt(fruits[i].renderD),dx=p.x-fp.x,dy=p.y-fp.y,d2=dx*dx+dy*dy;if(d2<=rr&&d2<best){best=d2;hit=i;}}if(hit>=0){const h=fruits[hit],hp=pointAt(h.renderD),relx=p.x-hp.x,rely=p.y-hp.y,dot=relx*hp.tx+rely*hp.ty,idx=dot>0?hit+1:hit;const ins=insertFruit(p.type,idx,h.renderD);projectile=null;pendingId=ins.id;state='inserting';stateTimer=CFG.insertDelay;return;}if(p.x<-80||p.x>W+80||p.y<-80||p.y>H+80)projectile=null;}
 function updateState(dt){if(state==='inserting'){stateTimer-=dt;if(stateTimer<=0){const i=fruits.findIndex(f=>f.id===pendingId),m=findMatch(i);m?beginMatch(m):finishCombo();}}else if(state==='resolving'){stateTimer-=dt;if(stateTimer<=0)finishMatch();}else if(state==='pulling')updatePull(dt);}
 function endGame(win){projectile=null;state=win?'win':'lose';result=win?'爆汁成功！':'水果进榨汁机了！';restartBtn.hidden=false;swapBtn.disabled=true;shake=.14;shakeMag=win?3:7;}
 function reset(){fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
-function update(dt){if(state==='win'||state==='lose'){updateFX(dt);return;}const s=speed();for(const f of fruits){f.d+=s*dt;f.matchAge+=f.matching?dt:0;const follow=Math.min(1,dt*18);f.renderD+=(f.d-f.renderD)*follow;}if(state==='playing')trySpawn();updateProjectile(dt);updateState(dt);for(const f of fruits)if(!f.matching){f.matchAge=0;}updateFX(dt);const front=fruits.at(-1);if(front&&!front.matching&&front.d>=totalLen-CFG.losePadding)return endGame(false);if(spawned>=CFG.total&&!fruits.length&&!projectile)return endGame(true);if(shake>0)shake=Math.max(0,shake-dt);}
+function update(dt){
+  if(state==='win'||state==='lose'){updateFX(dt);return;}
+
+  // During pullback, pause the normal forward march. Only the front segment
+  // is allowed to move backward in updatePull().
+  if(state!=='pulling'){
+    const s=speed();
+    for(const f of fruits)f.d+=s*dt;
+  }
+
+  for(const f of fruits){
+    f.matchAge+=f.matching?dt:0;
+    const follow=Math.min(1,dt*18);
+    f.renderD+=(f.d-f.renderD)*follow;
+  }
+
+  if(state==='playing')trySpawn();
+  updateProjectile(dt);
+  updateState(dt);
+  for(const f of fruits)if(!f.matching)f.matchAge=0;
+  updateFX(dt);
+
+  const front=fruits.at(-1);
+  if(front&&!front.matching&&front.d>=totalLen-CFG.losePadding)return endGame(false);
+  if(spawned>=CFG.total&&!fruits.length&&!projectile)return endGame(true);
+  if(shake>0)shake=Math.max(0,shake-dt);
+}
 function updateFX(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.spin*dt;if(p.life<=0)particles.splice(i,1);}for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.life-=dt;w.r+=220*dt;if(w.life<=0)waves.splice(i,1);}}
 
 function drawFruit(x,y,type,r,alpha=1,scale=1){ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.scale(scale,scale);const c=COLORS[type];ctx.shadowColor='#0005';ctx.shadowBlur=8;ctx.shadowOffsetY=5;if(type===0){ctx.fillStyle=c.accent;circle(0,0,r);ctx.fillStyle=c.main;circle(0,0,r-5);ctx.fillStyle=c.dark;[[-8,-5],[8,-1],[0,10]].forEach(q=>circle(q[0],q[1],2.2));}else if(type===1){ctx.fillStyle=c.main;circle(0,0,r);ctx.fillStyle=c.accent;circle(-9,-11,r*.2);ctx.strokeStyle='#5d8d35';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-6,-r+4);ctx.lineTo(4,-r-4);ctx.stroke();}else if(type===2){ctx.fillStyle=c.dark;circle(0,2,r);const rr=r*.34,pts=[[-rr,-rr*.5],[0,-rr],[rr,-rr*.5],[-rr*.6,rr*.35],[rr*.6,rr*.35],[0,rr]];ctx.fillStyle=c.main;pts.forEach(q=>circle(q[0],q[1],r*.34));ctx.strokeStyle='#5d8d35';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-r+2);ctx.lineTo(6,-r-7);ctx.stroke();}else{ctx.fillStyle='#8e6445';circle(0,0,r);ctx.fillStyle=c.main;circle(0,0,r-5);ctx.fillStyle=c.accent;circle(0,0,r*.30);ctx.fillStyle=c.dark;for(let i=0;i<10;i++){const a=i/10*Math.PI*2;circle(Math.cos(a)*r*.48,Math.sin(a)*r*.48,1.7);}}ctx.shadowColor='transparent';ctx.fillStyle='#fff';ctx.globalAlpha=alpha*.72;circle(-r*.32,-r*.34,Math.max(3,r*.12));ctx.restore();}
