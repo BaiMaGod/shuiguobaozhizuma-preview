@@ -43,7 +43,49 @@ function drawFruit(x,y,type,r,alpha=1,scale=1){ctx.save();ctx.globalAlpha=alpha;
 function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
 function roundedRect(x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();}
 function drawTrack(){ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#38524a';ctx.lineWidth=78;ctx.beginPath();samples.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.strokeStyle='#f0dba4';ctx.lineWidth=62;ctx.stroke();ctx.strokeStyle='#d8bd7d';ctx.lineWidth=3;ctx.setLineDash([14,12]);ctx.stroke();ctx.setLineDash([]);}
-function drawMachine(){const e=pointAt(totalLen);ctx.save();ctx.translate(e.x,e.y);ctx.fillStyle='#263a38';ctx.fillRect(-58,-42,116,110);ctx.fillStyle='#8aa596';ctx.fillRect(-49,-33,98,92);ctx.fillStyle='#070f0e';circle(0,0,39);ctx.fillStyle='#d98e3c';ctx.fillRect(-52,52,104,20);ctx.restore();}
+function drawMachine(){
+  const e=pointAt(totalLen);
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  ctx.shadowColor='#0007';
+  ctx.shadowBlur=12;
+  ctx.shadowOffsetY=5;
+
+  // Bright juicer housing: deliberately non-circular so it cannot be mistaken for a fruit.
+  ctx.fillStyle='#f39b3a';
+  roundedRect(-62,-54,124,116,18);
+  ctx.fill();
+  ctx.fillStyle='#f7e1a7';
+  roundedRect(-50,-42,100,86,13);
+  ctx.fill();
+
+  // Wide intake slot and visible cutter blades.
+  ctx.fillStyle='#23332f';
+  roundedRect(-39,-22,78,44,12);
+  ctx.fill();
+  ctx.strokeStyle='#d9ebe3';
+  ctx.lineWidth=7;
+  ctx.beginPath();
+  ctx.moveTo(-24,-13); ctx.lineTo(24,13);
+  ctx.moveTo(24,-13); ctx.lineTo(-24,13);
+  ctx.stroke();
+  ctx.fillStyle='#ffb245';
+  circle(0,0,7);
+
+  // Juice outlet/base.
+  ctx.shadowColor='transparent';
+  ctx.fillStyle='#8aa596';
+  ctx.fillRect(-26,44,52,16);
+  ctx.fillStyle='#d9782d';
+  ctx.fillRect(-44,60,88,15);
+
+  ctx.textAlign='center';
+  ctx.textBaseline='top';
+  ctx.font='700 18px system-ui';
+  ctx.fillStyle='#fff3ca';
+  ctx.fillText('榨汁口',0,82);
+  ctx.restore();
+}
 function drawShooter(){let dx=aim.x-360,dy=aim.y-1135,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l;ctx.save();ctx.globalAlpha=.23;ctx.strokeStyle='#fff4cf';ctx.lineWidth=4;ctx.setLineDash([16,18]);ctx.beginPath();ctx.moveTo(360+ux*78,1135+uy*78);ctx.lineTo(360+ux*Math.min(720,l),1135+uy*Math.min(720,l));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.strokeStyle='#355d50';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(360+ux*20,1135+uy*20);ctx.lineTo(360+ux*66,1135+uy*66);ctx.stroke();ctx.fillStyle='#27493f';circle(360,1135,52);ctx.fillStyle='#f1d18b';circle(360,1135,43);ctx.fillStyle='#355d50';circle(360,1135,34);drawFruit(360,1135,current,28);ctx.restore();drawFruit(610,1125,next,21);}
 function drawBackground(){ctx.fillStyle='#183d35';ctx.fillRect(0,0,W,H);ctx.fillStyle='#214c40';circle(86,1180,150);circle(670,175,175);ctx.fillStyle='#2d5a4d';for(let i=0;i<18;i++)circle((i*137)%720,110+(i*223)%930,3+(i%3));ctx.fillStyle='#102c27';ctx.fillRect(0,0,W,92);}
 function drawHUD(){ctx.textBaseline='middle';ctx.font='700 32px system-ui';ctx.fillStyle='#fff6db';ctx.fillText(`得分  ${score}`,24,48);ctx.textAlign='right';if(combo>=2){ctx.font='900 42px system-ui';ctx.strokeStyle='#8f3c43';ctx.lineWidth=7;ctx.strokeText(`COMBO ×${combo}`,684,50);ctx.fillStyle='#fff09a';ctx.fillText(`COMBO ×${combo}`,684,50);}ctx.textAlign='center';if(!startedShot&&state==='playing'){ctx.font='600 24px system-ui';ctx.fillStyle='#fff7df';ctx.globalAlpha=.92;ctx.fillText('点击轨道方向发射水果 · 3个相同水果即可爆汁',360,1060);ctx.globalAlpha=1;}ctx.font='600 19px system-ui';ctx.fillStyle='#fff3ca';ctx.fillText('下一颗',610,1070);ctx.textAlign='left';}
