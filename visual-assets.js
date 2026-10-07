@@ -27,7 +27,7 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261007-art6';
+    img.src=A+path+'?v=20261007-art7';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry'];
   const JUICE=['#ff4f5f','#ff9d20','#9c48eb','#ff3150'];
@@ -85,7 +85,7 @@
       if(ready('body')){
         ctx.save();ctx.translate(x-ux*kick,y-uy*kick);ctx.rotate(Math.atan2(uy,ux)+Math.PI/2);
         ctx.drawImage(images.body,-q.bodyWidth/2,-q.bodyPivotY,q.bodyWidth,q.bodyHeight);
-        drawFruit(0,12,current,21);ctx.restore();
+        drawFruit(0,q.badgeOffsetY,current,q.badgeRadius);ctx.restore();
       }
       drawFruit(x+ux*(q.muzzleDistance-kick),y+uy*(q.muzzleDistance-kick),current,28);
       const n=S.next;

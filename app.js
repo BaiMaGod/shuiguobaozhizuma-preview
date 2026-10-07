@@ -194,12 +194,12 @@ canvas.addEventListener('pointerdown',ev=>{if(paused||state==='win'||state==='lo
 swapBtn.addEventListener('click',ev=>{ev.stopPropagation();if(paused||state!=='playing'||projectile)return;[current,next]=[next,current];});
 restartBtn.addEventListener('click',ev=>{ev.stopPropagation();reset();});
 document.getElementById('reset').addEventListener('click',reset);
-document.getElementById('pause').addEventListener('click',()=>{if(state==='win'||state==='lose')return;setPaused(!paused);});
+document.getElementById('pause').addEventListener('click',()=>{if(state==='win'||state==='lose')return;if(!document.getElementById('settings-panel').hidden){document.getElementById('settings-panel').hidden=true;setPaused(false);return;}setPaused(!paused);});
 document.getElementById('resume').addEventListener('click',()=>setPaused(false));
 document.getElementById('sound').addEventListener('click',()=>setMuted(!muted));
 document.getElementById('sound-setting').addEventListener('change',e=>setMuted(!e.target.checked));
 document.getElementById('motion-setting').addEventListener('change',e=>{reducedMotion=!e.target.checked;});
-document.getElementById('settings').addEventListener('click',()=>{setPaused(true);document.getElementById('settings-panel').hidden=false;});
+document.getElementById('settings').addEventListener('click',()=>{setPaused(true);document.getElementById('settings-panel').hidden=false;document.getElementById('pause-panel').hidden=true;});
 document.getElementById('close-settings').addEventListener('click',()=>{document.getElementById('settings-panel').hidden=true;setPaused(false);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state!=='win'&&state!=='lose')setPaused(true);});
 if(new URLSearchParams(location.search).has('debug')){
