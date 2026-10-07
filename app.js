@@ -2,6 +2,7 @@
 'use strict';
 const S=window.FruitLayout,W=S.width,H=S.height,SX=S.shooter.x,SY=S.shooter.y;
 const ART=window.FruitArt||null;
+const FEEDBACK=window.FruitFeedback;
 const CFG={fruitR:31,spacing:54,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.22,score:10,losePadding:12};
 const FRUITS=[0,1,2,3];
 const COLORS={
@@ -15,7 +16,7 @@ const control=S.track;
 const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
 const swapBtn=document.getElementById('swap'); const restartBtn=document.getElementById('restart');
 let dpr=Math.min(devicePixelRatio||1,2);
-let samples=[],totalLen=0,fruits=[],spawned=0,history=[],projectile=null,current=0,next=1,state='playing',stateTimer=0,pendingId=-1,currentMatch=null,pullback=null,score=0,combo=0,maxCombo=0,aim={x:SX-65,y:660},last=performance.now(),particles=[],waves=[],shake=0,shakeMag=0,recoil=0,startedShot=false,result=null,paused=false,muted=false,reducedMotion=false,debugHold=false;
+let samples=[],totalLen=0,fruits=[],spawned=0,history=[],projectile=null,current=0,next=1,state='playing',stateTimer=0,pendingId=-1,currentMatch=null,pullback=null,score=0,combo=0,maxCombo=0,aim={x:SX-65,y:660},last=performance.now(),particles=[],waves=[],muzzleFlash=null,shake=0,shakeMag=0,recoil=0,startedShot=false,result=null,paused=false,muted=false,reducedMotion=false,debugHold=false;
 
 function catmull(p0,p1,p2,p3,t){const t2=t*t,t3=t2*t;return{x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)}}
 function buildTrack(){const raw=[]; for(let i=0;i<control.length-1;i++){const p0=control[Math.max(0,i-1)],p1=control[i],p2=control[i+1],p3=control[Math.min(control.length-1,i+2)];for(let t=0;t<1;t+=.035)raw.push(catmull(p0,p1,p2,p3,t));}raw.push(control.at(-1));samples=[];let dist=0;for(let i=0;i<raw.length;i++){if(i){const dx=raw[i].x-raw[i-1].x,dy=raw[i].y-raw[i-1].y;dist+=Math.hypot(dx,dy);}const a=raw[Math.max(0,i-1)],b=raw[Math.min(raw.length-1,i+1)],dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1;samples.push({...raw[i],distance:dist,tx:dx/l,ty:dy/l});}totalLen=dist;}
@@ -59,21 +60,39 @@ function updatePull(dt){
   const shift=Math.min(gap,CFG.pullSpeed*dt);
   for(let i=b;i<fruits.length;i++)fruits[i].d-=shift;
 }
-function burst(x,y,type,str=1){const c=COLORS[type];const n=Math.min(38,Math.round(20+str*7));for(let i=0;i<n;i++){const aa=Math.random()*Math.PI*2,s=145+Math.random()*(215+str*34),life=.46+Math.random()*.38;particles.push({x:x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*16,vx:Math.cos(aa)*s,vy:Math.sin(aa)*s-65,g:430+Math.random()*270,life,max:life,r:3.4+Math.random()*(7.5+str),color:i%5===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*12,type,shard:i%6===0});}waves.push({x,y,r:10,life:.52,max:.52,color:c.juice,type,strength:str,seed:Math.random()*10000});}
+function burst(x,y,type,str=1){
+  const c=COLORS[type],n=Math.min(30,Math.round(18+str*5),FEEDBACK.maxParticles-particles.length);
+  for(let i=0;i<n;i++){
+    const aa=Math.random()*Math.PI*2,s=145+Math.random()*(215+str*34),life=.46+Math.random()*.38;
+    particles.push({x:x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*16,vx:Math.cos(aa)*s,vy:Math.sin(aa)*s-65,g:430+Math.random()*270,life,max:life,r:3.4+Math.random()*(7.5+str),color:i%5===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*12,type,shard:i%6===0});
+  }
+  if(waves.length<FEEDBACK.maxBursts)waves.push({x,y,r:10,life:FEEDBACK.burstLife,max:FEEDBACK.burstLife,color:c.juice,type,strength:str,rotation:(Math.random()-.5)*.7});
+}
 function fire(x,y){
   if(paused||state!=='playing'||projectile)return;
   let dx=x-SX,dy=y-SY,l=Math.hypot(dx,dy);if(l<20)return;
   dx/=l;dy/=l;
   const muzzle=S.shooter.muzzleDistance;
   projectile={type:current,x:SX+dx*muzzle,y:SY+dy*muzzle,vx:dx*CFG.projectileSpeed,vy:dy*CFG.projectileSpeed};
+  muzzleFlash={x:projectile.x,y:projectile.y,type:current,life:FEEDBACK.shotFlashLife};
   recoil=.12;playShot();combo=0;startedShot=true;current=next;next=shooterType();
 }
 function updateProjectile(dt){const p=projectile;if(!p||state!=='playing')return;p.x+=p.vx*dt;p.y+=p.vy*dt;let hit=-1,best=Infinity;const rr=CFG.collisionR**2;for(let i=0;i<fruits.length;i++){const fp=pointAt(fruits[i].renderD),dx=p.x-fp.x,dy=p.y-fp.y,d2=dx*dx+dy*dy;if(d2<=rr&&d2<best){best=d2;hit=i;}}if(hit>=0){const h=fruits[hit],hp=pointAt(h.renderD),relx=p.x-hp.x,rely=p.y-hp.y,dot=relx*hp.tx+rely*hp.ty,idx=dot>0?hit+1:hit;const ins=insertFruit(p.type,idx,h.renderD);projectile=null;pendingId=ins.id;state='inserting';stateTimer=CFG.insertDelay;return;}if(p.x<-80||p.x>W+80||p.y<-80||p.y>H+80)projectile=null;}
 function updateState(dt){if(state==='inserting'){stateTimer-=dt;if(stateTimer<=0){const i=fruits.findIndex(f=>f.id===pendingId),m=findMatch(i);m?beginMatch(m):finishCombo();}}else if(state==='resolving'){stateTimer-=dt;if(stateTimer<=0)finishMatch();}else if(state==='pulling')updatePull(dt);}
-function endGame(win){projectile=null;state=win?'win':'lose';result=win?'爆汁成功！':'水果进榨汁机了！';restartBtn.hidden=false;swapBtn.disabled=true;shake=reducedMotion?0:.14;shakeMag=win?3:7;}
-function reset(){setPaused(false);document.getElementById('settings-panel').hidden=true;fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;recoil=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
+function endGame(win){
+  projectile=null;state=win?'win':'lose';result=win?'爆汁成功！':'还差一点！';
+  restartBtn.hidden=false;swapBtn.disabled=true;
+  const summary=document.getElementById('result-summary');
+  summary.textContent=result+' 最终得分 '+score+'，最大连击 '+maxCombo+'。';summary.hidden=false;
+  document.getElementById('pause').disabled=true;
+  document.getElementById('settings').disabled=true;
+  shake=reducedMotion?0:.14;shakeMag=win?3:7;
+}
+function reset(){setPaused(false);document.getElementById('settings-panel').hidden=true;document.getElementById('result-summary').hidden=true;document.getElementById('pause').disabled=false;document.getElementById('settings').disabled=false;fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];muzzleFlash=null;score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;recoil=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
 function update(dt){
   if(paused||debugHold)return;
+  if(shake>0)shake=Math.max(0,shake-dt);
+  if(recoil>0)recoil=Math.max(0,recoil-dt);
   if(state==='win'||state==='lose'){updateFX(dt);return;}
 
   // During pullback, pause the normal forward march. Only the front segment
@@ -99,10 +118,8 @@ function update(dt){
   const front=fruits.at(-1);
   if(front&&!front.matching&&front.d>=totalLen-CFG.losePadding)return endGame(false);
   if(spawned>=CFG.total&&!fruits.length&&!projectile)return endGame(true);
-  if(shake>0)shake=Math.max(0,shake-dt);
-  if(recoil>0)recoil=Math.max(0,recoil-dt);
 }
-function updateFX(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.spin*dt;if(p.life<=0)particles.splice(i,1);}for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.life-=dt;w.r+=220*dt;if(w.life<=0)waves.splice(i,1);}}
+function updateFX(dt){if(muzzleFlash){muzzleFlash.life-=dt;if(muzzleFlash.life<=0)muzzleFlash=null;}for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.spin*dt;if(p.life<=0)particles.splice(i,1);}for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.life-=dt;w.r+=220*dt;if(w.life<=0)waves.splice(i,1);}}
 
 function drawFruit(x,y,type,r,alpha=1,scale=1){if(ART&&ART.drawFruit(ctx,x,y,type,r,alpha,scale))return;ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.scale(scale,scale);const c=COLORS[type];ctx.shadowColor='#0005';ctx.shadowBlur=8;ctx.shadowOffsetY=5;if(type===0){ctx.fillStyle=c.accent;circle(0,0,r);ctx.fillStyle=c.main;circle(0,0,r-5);ctx.fillStyle=c.dark;[[-8,-5],[8,-1],[0,10]].forEach(q=>circle(q[0],q[1],2.2));}else if(type===1){ctx.fillStyle=c.main;circle(0,0,r);ctx.fillStyle=c.accent;circle(-9,-11,r*.2);ctx.strokeStyle='#5d8d35';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-6,-r+4);ctx.lineTo(4,-r-4);ctx.stroke();}else if(type===2){ctx.fillStyle=c.dark;circle(0,2,r);const rr=r*.34,pts=[[-rr,-rr*.5],[0,-rr],[rr,-rr*.5],[-rr*.6,rr*.35],[rr*.6,rr*.35],[0,rr]];ctx.fillStyle=c.main;pts.forEach(q=>circle(q[0],q[1],r*.34));ctx.strokeStyle='#5d8d35';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-r+2);ctx.lineTo(6,-r-7);ctx.stroke();}else{ctx.fillStyle='#8e6445';circle(0,0,r);ctx.fillStyle=c.main;circle(0,0,r-5);ctx.fillStyle=c.accent;circle(0,0,r*.30);ctx.fillStyle=c.dark;for(let i=0;i<10;i++){const a=i/10*Math.PI*2;circle(Math.cos(a)*r*.48,Math.sin(a)*r*.48,1.7);}}ctx.shadowColor='transparent';ctx.fillStyle='#fff';ctx.globalAlpha=alpha*.72;circle(-r*.32,-r*.34,Math.max(3,r*.12));ctx.restore();}
 function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
@@ -157,7 +174,7 @@ function drawHUD(){if(ART&&ART.drawHUD(ctx,{score,combo,startedShot,state}))retu
 function drawFX(){if(ART&&ART.drawFX(ctx,waves,particles))return;for(const w of waves){ctx.save();ctx.globalAlpha=Math.max(0,w.life/w.max)*.28;ctx.strokeStyle=w.color;ctx.lineWidth=8;circleStroke(w.x,w.y,w.r);ctx.restore();}for(const p of particles){ctx.save();ctx.globalAlpha=Math.min(.95,p.life/.66*1.25);ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(1.35,.75);ctx.fillStyle=p.color;circle(0,0,p.r);ctx.restore();}}
 function circleStroke(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();}
 function drawResult(){if(ART&&ART.drawResult(ctx,{result,score,maxCombo,state}))return;if(!result)return;ctx.save();ctx.fillStyle='#162620f8';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f6e4b2';roundedRect(70,365,580,440,26);ctx.fill();ctx.fillStyle='#31554a';roundedRect(82,377,556,416,20);ctx.fill();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='900 50px system-ui';ctx.fillStyle=state==='win'?'#fff09a':'#ffd2bd';ctx.fillText(result,360,465);ctx.font='600 28px system-ui';ctx.fillStyle='#fff';ctx.fillText(`最终得分：${score}`,360,565);ctx.fillText(`最大 Combo：×${Math.max(1,maxCombo)}`,360,615);ctx.font='500 20px system-ui';ctx.fillStyle='#d8eadf';ctx.fillText('点击下方按钮重新开始',360,690);ctx.restore();}
-function render(){ctx.save();let sx=0,sy=0;if(!reducedMotion&&shake>0){sx=(Math.random()-.5)*shakeMag*2;sy=(Math.random()-.5)*shakeMag*2;}ctx.translate(sx,sy);drawBackground();drawTrack();drawMachine();for(const f of fruits){const p=pointAt(f.renderD),pulse=f.matching?1+Math.sin(Math.min(1,f.matchAge/CFG.matchDelay)*Math.PI)*.2:1;drawFruit(p.x,p.y,f.type,CFG.fruitR,f.matching?.88:1,pulse);}if(projectile)drawFruit(projectile.x,projectile.y,projectile.type,29);drawFX();drawShooter();ctx.restore();drawHUD();drawResult();if(new URLSearchParams(location.search).has('track'))drawTrackDebug();}
+function render(){ctx.save();let sx=0,sy=0;if(!reducedMotion&&shake>0){sx=(Math.random()-.5)*shakeMag*2;sy=(Math.random()-.5)*shakeMag*2;}ctx.translate(sx,sy);drawBackground();drawTrack();drawMachine();for(const f of fruits){const p=pointAt(f.renderD),pulse=f.matching?1+Math.sin(Math.min(1,f.matchAge/CFG.matchDelay)*Math.PI)*.2:1;drawFruit(p.x,p.y,f.type,CFG.fruitR,f.matching?.88:1,pulse);}if(projectile){if(ART)ART.drawProjectileTrail(ctx,projectile,reducedMotion);drawFruit(projectile.x,projectile.y,projectile.type,29);}drawFX();if(ART)ART.drawShotFlash(ctx,muzzleFlash);drawShooter();ctx.restore();drawHUD();drawResult();if(new URLSearchParams(location.search).has('track'))drawTrackDebug();}
 function frame(now){let dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;update(dt);render();requestAnimationFrame(frame);}
 function localPoint(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
 function setPaused(value){
@@ -189,6 +206,7 @@ function drawTrackDebug(){
 function placeButton(id,x,y,width,height){const el=document.getElementById(id);Object.assign(el.style,{left:100*x/W+'%',top:100*y/H+'%',width:100*width/W+'%',height:100*height/H+'%'});}
 for(const [id,key] of [['pause','pauseX'],['reset','restartX'],['sound','soundX'],['settings','settingsX']])placeButton(id,S.buttons[key],S.buttons.y,S.buttons.size,S.buttons.size);
 placeButton('swap',S.swap.x,S.swap.y,S.swap.width,S.swap.height);
+placeButton('restart',S.result.button.x,S.result.button.y,S.result.button.width,S.result.button.height);
 canvas.addEventListener('pointermove',ev=>{if(paused||state==='win'||state==='lose')return;const p=localPoint(ev);if(p.y<S.hudBottom||p.y>S.aimMaxY)return;aim.x=Math.max(10,Math.min(W-10,p.x));aim.y=p.y;});
 canvas.addEventListener('pointerdown',ev=>{if(paused||state==='win'||state==='lose')return;const p=localPoint(ev);if(p.y<S.hudBottom||p.y>S.aimMaxY)return;aim.x=p.x;aim.y=p.y;fire(p.x,p.y);});
 swapBtn.addEventListener('click',ev=>{ev.stopPropagation();if(paused||state!=='playing'||projectile)return;[current,next]=[next,current];});
@@ -204,7 +222,7 @@ document.getElementById('close-settings').addEventListener('click',()=>{document
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state!=='win'&&state!=='lose')setPaused(true);});
 if(new URLSearchParams(location.search).has('debug')){
   window.ZumaDebug={
-    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,shooter:S.shooter,aim:{...aim}}),
+    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,shooter:S.shooter,aim:{...aim},effects:{particles:particles.length,bursts:waves.length,muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
     pointAt,
     hold:(value=true)=>{debugHold=value;},
     aimAt:(x,y)=>{aim={x,y};render();},
@@ -212,12 +230,24 @@ if(new URLSearchParams(location.search).has('debug')){
     step:(dt)=>{const held=debugHold;debugHold=false;update(dt);debugHold=held;render();},
     reset,
     render,
-    load:spec=>{reset();fruits=spec.fruits.map(f=>mkFruit(f.type,f.d));spawned=spec.spawned??CFG.total;current=spec.current??0;next=spec.next??1;state=spec.state??'playing';debugHold=true;render();}
+    load:spec=>{reset();fruits=spec.fruits.map(f=>mkFruit(f.type,f.d));spawned=spec.spawned??CFG.total;current=spec.current??0;next=spec.next??1;score=spec.score??0;maxCombo=spec.maxCombo??0;state=spec.state??'playing';debugHold=true;render();}
   };
 }
 async function start(){
   if(ART&&ART.whenReady)await ART.whenReady();
   buildTrack();reset();document.getElementById('loading').hidden=true;setMuted(false);requestAnimationFrame(frame);
+  // Opt-in, frozen visual QA fixtures. Normal gameplay never enters this branch.
+  const query=new URLSearchParams(location.search);
+  if(query.has('debug')){
+    const scene=query.get('scene'),d=window.ZumaDebug;
+    if(scene==='win') {d.load({fruits:[],score:2460,maxCombo:4});d.step(.001);d.step(.5);}
+    else if(scene==='lose'){d.load({fruits:[{type:1,d:totalLen-11}],score:1280,maxCombo:3});d.step(.001);d.step(.5);}
+    else if(scene==='burst'){
+      d.load({fruits:Array.from({length:37},(_,i)=>({type:i%4,d:15+i*54}))});
+      [260,700,1160,1600].forEach((distance,type)=>{const p=pointAt(distance);burst(p.x,p.y,type);});
+      updateFX(.10);render();
+    }
+  }
 }
 start();
 })();

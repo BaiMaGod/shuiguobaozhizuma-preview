@@ -11,7 +11,7 @@ button{pointer-events:auto;position:absolute;border:0;color:#fff;cursor:pointer;
 #pause svg{stroke-width:7}
 #settings svg{width:54%;height:54%;stroke-width:3.6}
 .wide-button,.panel-button{background:transparent url('./assets/resources/art/ui/wide_button.webp') center/100% 100% no-repeat;font-weight:800;font-size:clamp(14px,3.1vw,24px);text-shadow:0 2px 1px #975416;filter:drop-shadow(0 4px 2px #532b1766)}
-#restart{left:30.5%;top:55%;width:39%;height:6%}
+#restart{font-size:clamp(20px,4vw,28px)}
 button:active{transform:translateY(2px)}
 button:disabled{opacity:.5;cursor:default}
 button:focus-visible{outline:3px solid #fff7cb;outline-offset:2px}
@@ -21,3 +21,4 @@ button:focus-visible{outline:3px solid #fff7cb;outline-offset:2px}
 .panel input{width:24px;height:24px;accent-color:#f6a028}
 .panel-button{position:relative;display:block;margin:20px auto 0;width:100%;height:54px;font-size:20px}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:#23402bec;color:#fff0bd;font-size:24px;z-index:7}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}

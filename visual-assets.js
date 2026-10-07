@@ -3,6 +3,7 @@
   'use strict';
   const A='./assets/resources/art/';
   const S=window.FruitLayout;
+  const F=window.FruitFeedback;
   const images=Object.create(null);
   const entries={
     strawberry:'fruits/strawberry.webp',
@@ -16,9 +17,10 @@
     scorePlaque:'ui/score_plaque.webp',
     comboSplash:'ui/combo_splash.webp',
     nextBadge:'ui/next_badge.webp',
-    burst:'fx/strawberry_burst.webp',
+    resultBoard:'ui/result_board_v2.webp',
     orchard:S.background+'.webp'
   };
+  F.burstKeys.forEach((key,type)=>{entries['burst'+type]=key+'.webp';});
   let loaded=0,failed=0;
   let finishLoading;
   const loading=new Promise(resolve=>{finishLoading=resolve;});
@@ -27,11 +29,10 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261007-art7';
+    img.src=A+path+'?v=20261007-polish1';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry'];
   const JUICE=['#ff4f5f','#ff9d20','#9c48eb','#ff3150'];
-  const HUE=[-8,38,235,0];
   const ready=k=>images[k]&&images[k].complete&&images[k].naturalWidth>0;
   const rr=(ctx,x,y,w,h,r)=>{
     const q=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+q,y);ctx.arcTo(x+w,y,x+w,y+h,q);
@@ -103,18 +104,19 @@
         ctx.save();
         // bright core flash
         const glow=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,56+p*35);
-        glow.addColorStop(0,'rgba(255,255,235,'+(0.9*k)+')');
-        glow.addColorStop(.22,JUICE[w.type]+'cc');glow.addColorStop(1,'rgba(255,255,255,0)');
+        const flash=Math.max(0,1-p/.45);
+        glow.addColorStop(0,'rgba(255,255,235,'+(0.65*flash)+')');
+        glow.addColorStop(.22,JUICE[w.type]+Math.round(flash*130).toString(16).padStart(2,'0'));glow.addColorStop(1,'rgba(255,255,255,0)');
         ctx.fillStyle=glow;ctx.beginPath();ctx.arc(w.x,w.y,62+p*38,0,Math.PI*2);ctx.fill();
 
-        if(ready('burst')){
-          const s=(112+p*118)*(w.strength||1);
-          ctx.globalAlpha=Math.min(1,k*1.55);
-          ctx.filter='hue-rotate('+HUE[w.type]+'deg) saturate(1.35) contrast(1.08)';
-          ctx.drawImage(images.burst,w.x-s/2,w.y-s/2,s,s);
-          ctx.filter='none';
+        if(ready('burst'+w.type)){
+          const s=Math.min(170,128+(w.strength||1)*20)*(.45+(1-Math.pow(1-p,3))*.72);
+          ctx.globalAlpha=p<.12?p/.12:Math.pow(k/.88,1.3);
+          ctx.translate(w.x,w.y);ctx.rotate(w.rotation||0);
+          ctx.drawImage(images['burst'+w.type],-s/2,-s/2,s,s);
+          ctx.rotate(-(w.rotation||0));ctx.translate(-w.x,-w.y);
         }
-        ctx.globalAlpha=k*.72;ctx.strokeStyle=JUICE[w.type];ctx.lineWidth=9-p*5;
+        ctx.globalAlpha=Math.max(0,1-p/.58)*.38;ctx.strokeStyle=JUICE[w.type];ctx.lineWidth=5-p*3;
         ctx.beginPath();ctx.arc(w.x,w.y,28+p*66,0,Math.PI*2);ctx.stroke();
         ctx.restore();
       }
@@ -133,6 +135,23 @@
         ctx.restore();
       }
       return true;
+    },
+
+    drawShotFlash(ctx,flash){
+      if(!flash)return;
+      const p=1-flash.life/F.shotFlashLife,scale=.65+p*1.35;
+      ctx.save();ctx.translate(flash.x,flash.y);ctx.scale(scale,scale);ctx.globalAlpha=(1-p)*.9;
+      ctx.strokeStyle='#fff5c3';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle=JUICE[flash.type];ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();ctx.restore();
+    },
+
+    drawProjectileTrail(ctx,p,reducedMotion){
+      if(!p||reducedMotion)return;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));ctx.fillStyle=JUICE[p.type];
+      F.trailRadii.forEach((r,i)=>{
+        ctx.globalAlpha=F.trailAlpha[i];ctx.beginPath();
+        ctx.ellipse(-F.trailDistances[i],0,r*1.3,r*.65,0,0,Math.PI*2);ctx.fill();
+      });ctx.restore();
     },
 
     // Keep the orchard route clean; the terminal is logically off-screen at the path end.
@@ -155,13 +174,17 @@
 
     drawResult(ctx,data){
       const {result,score,maxCombo,state}=data;if(!result)return true;
-      ctx.save();ctx.fillStyle='rgba(19,31,22,.78)';ctx.fillRect(0,0,720,1280);
-      plaque(ctx,78,358,564,440,'#9e6634','#4c301d');
+      const r=S.result,won=state==='win';
+      ctx.save();ctx.fillStyle='rgba(19,31,22,.77)';ctx.fillRect(0,0,S.width,S.height);
+      if(ready('resultBoard'))ctx.drawImage(images.resultBoard,r.x,r.y,r.width,r.height);
+      else plaque(ctx,r.x,r.y,r.width,r.height,'#fff0c8','#e8d0a1');
       ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.font='900 50px system-ui';ctx.fillStyle=state==='win'?'#fff18b':'#ffd0ae';ctx.fillText(result,360,460);
-      ctx.font='700 29px system-ui';ctx.fillStyle='#fff1cc';ctx.fillText('最终得分：'+score,360,558);
-      ctx.fillText('最大连击：×'+Math.max(1,maxCombo),360,615);
-      ctx.font='600 20px system-ui';ctx.fillStyle='#f1d9ad';ctx.fillText('点击下方按钮再玩一局',360,700);
+      ctx.font='900 48px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#673616';ctx.strokeText(won?'爆汁成功！':'还差一点！',360,r.titleY);
+      ctx.fillStyle='#fff0b1';ctx.fillText(won?'爆汁成功！':'还差一点！',360,r.titleY);
+      ctx.font='700 23px system-ui';ctx.fillStyle='#79512f';ctx.fillText(won?'果园清空啦，漂亮！':'水果到达终点，再试一次',360,r.subtitleY);
+      ctx.font='900 70px system-ui';ctx.fillStyle='#b45b1b';ctx.fillText(String(score),360,r.scoreY);
+      ctx.font='700 24px system-ui';ctx.fillStyle='#79512f';ctx.fillText('最终得分',360,r.scoreLabelY);
+      ctx.font='800 29px system-ui';ctx.fillText('最大连击  ×'+Math.max(0,maxCombo),360,r.comboY);
       ctx.restore();return true;
     }
   };
