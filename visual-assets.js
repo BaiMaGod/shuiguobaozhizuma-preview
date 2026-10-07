@@ -29,7 +29,7 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261007-dragon3';
+    img.src=A+path+'?v=20261007-juice-feedback7';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry','lemon'];
   const JUICE=FRUIT_BY_TYPE.map((_,type)=>window.FruitPalette[type].juice);
@@ -116,7 +116,7 @@
         ctx.fillStyle=glow;ctx.beginPath();ctx.arc(w.x,w.y,62+p*38,0,Math.PI*2);ctx.fill();
 
         if(ready('burst'+w.type)){
-          const s=Math.min(236,128+(w.strength||1)*30)*(.45+(1-Math.pow(1-p,3))*.72);
+          const s=(w.bonus?Math.min(310,218+(w.strength||1)*24):Math.min(236,128+(w.strength||1)*30))*(.45+(1-Math.pow(1-p,3))*.72);
           ctx.globalAlpha=p<.12?p/.12:Math.pow(k/.88,1.3);
           ctx.translate(w.x,w.y);ctx.rotate(w.rotation||0);
           ctx.drawImage(images['burst'+w.type],-s/2,-s/2,s,s);
@@ -172,9 +172,12 @@
       const label=(txt,x,y,size)=>{ctx.font='900 '+size+'px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#6d3418';ctx.strokeText(txt,x,y);ctx.fillStyle='#fff0b6';ctx.fillText(txt,x,y);};
       label('分数',p.x+p.width/2,p.y+29,22);
       label(String(score),p.x+p.width/2,p.y+62,34);
+      if(combo>=2){
+      const cx=c.x+c.width/2,cy=c.y+c.height/2;ctx.save();ctx.translate(cx,cy);ctx.scale(data.comboScale||1,data.comboScale||1);ctx.translate(-cx,-cy);ctx.globalAlpha=data.comboAlpha??1;
       if(ready('comboSplash'))ctx.drawImage(images.comboSplash,c.x,c.y,c.width,c.height);
       else plaque(ctx,c.x,c.y,c.width,c.height,'#ff9c26','#b64213');
-      label('连击 ×'+combo,c.x+c.width/2,c.y+65,29);
+      label('连击 ×'+combo,c.x+c.width/2,c.y+65,29);ctx.restore();
+      }
       ctx.restore();return true;
     },
 
@@ -195,3 +198,4 @@
     }
   };
 })();
+
