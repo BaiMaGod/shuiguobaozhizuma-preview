@@ -12,6 +12,7 @@
     watermelon:'fruits/watermelon.webp',
     grape:'fruits/grape.webp',
     blueberry:'fruits/blueberry.webp',
+    dragon:S.leader.asset+'.webp',
     body:'launcher/cannon_body_v2.webp',
     base:'launcher/cannon_base_v2.webp',
     scorePlaque:'ui/score_plaque.webp',
@@ -28,7 +29,7 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261007-polish2b';
+    img.src=A+path+'?v=20261007-dragon3';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry','lemon'];
   const JUICE=FRUIT_BY_TYPE.map((_,type)=>window.FruitPalette[type].juice);
@@ -56,6 +57,14 @@
       ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.globalAlpha=alpha;
       ctx.shadowColor='#1e120a88';ctx.shadowBlur=5;ctx.shadowOffsetY=3;
       ctx.drawImage(img,-side/2,-side/2,side,side);ctx.restore();return true;
+    },
+
+    drawLeader(ctx,x,y,tilt,scale=1){
+      if(!ready('dragon'))return false;
+      const side=S.leader.size;
+      ctx.save();ctx.translate(x,y);ctx.rotate(tilt*Math.PI/180);ctx.scale(scale,scale);
+      ctx.shadowColor='#24100588';ctx.shadowBlur=6;ctx.shadowOffsetY=4;
+      ctx.drawImage(images.dragon,-side/2,-side/2,side,side);ctx.restore();return true;
     },
 
     drawBackground(ctx,w,h){
@@ -178,7 +187,7 @@
       ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.font='900 48px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#673616';ctx.strokeText(won?'爆汁成功！':'还差一点！',360,r.titleY);
       ctx.fillStyle='#fff0b1';ctx.fillText(won?'爆汁成功！':'还差一点！',360,r.titleY);
-      ctx.font='700 23px system-ui';ctx.fillStyle='#79512f';ctx.fillText(won?'果园清空啦，漂亮！':'水果到达终点，再试一次',360,r.subtitleY);
+      ctx.font='700 23px system-ui';ctx.fillStyle='#79512f';ctx.fillText(won?'果园清空啦，漂亮！':'龙头到达终点，再试一次',360,r.subtitleY);
       ctx.font='900 70px system-ui';ctx.fillStyle='#b45b1b';ctx.fillText(String(score),360,r.scoreY);
       ctx.font='700 24px system-ui';ctx.fillStyle='#79512f';ctx.fillText('最终得分',360,r.scoreLabelY);
       ctx.font='800 29px system-ui';ctx.fillText('最大连击  ×'+Math.max(0,maxCombo),360,r.comboY);
