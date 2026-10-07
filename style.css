@@ -2,7 +2,7 @@
 [hidden]{display:none!important}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1b3224;color:#fff;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 body{display:grid;place-items:center}
-#shell{position:relative;width:min(100vw,56.25dvh);height:min(100dvh,177.7778vw);max-width:720px;max-height:1280px;overflow:hidden;background:#27412c;box-shadow:0 0 40px #0008;touch-action:none;user-select:none}
+#shell{position:relative;container-type:inline-size;width:min(100vw,56.25dvh);height:min(100dvh,177.7778vw);max-width:720px;max-height:1280px;overflow:hidden;background:#27412c;box-shadow:0 0 40px #0008;touch-action:none;user-select:none}
 #game{display:block;width:100%;height:100%;touch-action:none}
 #touch-ui{position:absolute;inset:0;pointer-events:none}
 button{pointer-events:auto;position:absolute;border:0;color:#fff;cursor:pointer;padding:0;font-family:inherit;-webkit-appearance:none}
@@ -20,5 +20,20 @@ button:focus-visible{outline:3px solid #fff7cb;outline-offset:2px}
 .panel label{display:flex;align-items:center;gap:12px;margin:18px 0;font-size:clamp(18px,4vw,26px)}
 .panel input{width:24px;height:24px;accent-color:#f6a028}
 .panel-button{position:relative;display:block;margin:20px auto 0;width:100%;height:54px;font-size:20px}
+#pause-panel{position:absolute;z-index:5;inset:0;text-align:center;background:radial-gradient(ellipse at center,#19381c66,#0f251ab5);backdrop-filter:blur(2px)}
+#pause-card{position:absolute;background:transparent url('./assets/resources/art/ui/result_board_v2.webp') center/100% 100% no-repeat;filter:drop-shadow(0 10px 16px #091b0dbb)}
+#pause-title{position:absolute;left:0;top:17.7%;width:100%;margin:0;color:#fff1b7;font-size:6.65cqw;line-height:1.12;letter-spacing:.035em;text-shadow:0 3px 0 #713914,0 0 12px #46230666}
+.pause-emblem{position:absolute;left:41.5%;top:31.7%;width:17%;aspect-ratio:1;border-radius:50%;border:.55cqw solid #ffd64d;background:radial-gradient(circle at 32% 22%,#fffbad,#ffbb21 55%,#f3830a);box-shadow:0 3px 0 #cf831a,0 7px 16px #bb731833,inset 0 2px 4px #fff8ae}
+.pause-emblem svg{width:100%;height:100%;fill:none;stroke:#fff8db;stroke-width:5;stroke-linecap:round;filter:drop-shadow(0 2px 0 #e19621)}
+.pause-subtitle{position:absolute;left:0;top:46.6%;width:100%;margin:0;color:#87522c;font-weight:700;font-size:3.2cqw;line-height:1.2}
+.pause-stats{position:absolute;left:14%;top:53.5%;width:72%;display:flex;gap:5%;color:#8b562e}
+.pause-stats>div{flex:1;padding:2.5% 0;border:1px solid #dcb66d88;border-radius:12px;background:linear-gradient(#fff7da99,#ffe5a54d);box-shadow:inset 0 1px 0 #fff9e1}
+.pause-stats span,.pause-stats strong{display:block}
+.pause-stats span{font-size:2.5cqw;font-weight:600;line-height:1.25}
+.pause-stats strong{font-size:4.45cqw;line-height:1.25;color:#b76a20}
+#resume{display:flex;justify-content:center;align-items:center;gap:2cqw;font-size:4cqw}
+#resume svg{width:3.4cqw;height:3.4cqw;fill:#fff8db;filter:drop-shadow(0 2px 0 #d87615)}
+#pause-restart{background:transparent;font-size:3.05cqw;font-weight:700;color:#8b5c32;text-shadow:0 1px 0 #fff8d0}
+#pause-restart:active{color:#ad651c}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:#23402bec;color:#fff0bd;font-size:24px;z-index:7}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
