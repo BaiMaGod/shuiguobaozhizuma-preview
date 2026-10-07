@@ -8,6 +8,8 @@
     lemon:'fruits/lemon.webp', watermelon:'fruits/watermelon.webp',
     grape:'fruits/grape.webp', blueberry:'fruits/blueberry.webp',
     cannon:'launcher/juice_cannon.webp', strawberryBurst:'fx/strawberry_burst.webp',
+    strawberryAtlas:'fx/strawberry_atlas.webp', orangeAtlas:'fx/orange_atlas.webp',
+    grapeAtlas:'fx/grape_atlas.webp', watermelonAtlas:'fx/watermelon_atlas.webp',
     orchard:'background/orchard_blurred.webp'
   };
   let loaded = 0, failed = 0;
@@ -34,7 +36,7 @@
   const leaf=(ctx,x,y,s)=>{ctx.save();ctx.translate(x,y);ctx.rotate(-.42);ctx.fillStyle='#449e30';ctx.beginPath();ctx.ellipse(0,0,s,s*.52,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#c3ee6b';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-s*.7,0);ctx.lineTo(s*.7,0);ctx.stroke();ctx.restore();};
   const bloom=(ctx,x,y)=>{ctx.save();ctx.translate(x,y);for(let j=0;j<5;j++){ctx.rotate(Math.PI*2/5);ctx.fillStyle='#fff5dc';ctx.beginPath();ctx.ellipse(0,-6,4.4,7,0,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#ffc83c';ctx.beginPath();ctx.arc(0,0,3.5,0,Math.PI*2);ctx.fill();ctx.restore();};
 
-  let trackCache = null;
+  let trackCache = null, backgroundCache = null;
   const drawTrackTo=(ctx,samples)=>{
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     const stroke=(width,color,shadow=false)=>{ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;
@@ -61,19 +63,71 @@
       ctx.shadowColor='#0007';ctx.shadowBlur=6;ctx.shadowOffsetY=4;
       ctx.drawImage(images[name],-side/2,-side/2,side,side);ctx.restore();return true;},
     drawBackground(ctx,w,h){if(!isReady('orchard'))return false;
-      ctx.drawImage(images.orchard,0,0,w,h);
-      ctx.fillStyle='rgba(14,39,31,.22)';ctx.fillRect(0,0,w,h);
+      // The previous build intentionally used a pre-blurred concept image. Build a
+      // sharpened cache once so the actual orchard art reads as the scene instead
+      // of a vague backdrop. Gameplay layers then sit directly on its baked road.
+      if(!backgroundCache){
+        backgroundCache=document.createElement('canvas');backgroundCache.width=w;backgroundCache.height=h;
+        const bc=backgroundCache.getContext('2d',{willReadFrequently:true});
+        bc.imageSmoothingEnabled=true;bc.imageSmoothingQuality='high';
+        bc.drawImage(images.orchard,0,0,w,h);
+        try{
+          const im=bc.getImageData(0,0,w,h),d=im.data,src=new Uint8ClampedArray(d);
+          const gain=1.28;
+          for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+            const p=(y*w+x)*4,l=p-4,r=p+4,u=p-w*4,dd=p+w*4;
+            for(let c=0;c<3;c++){
+              const avg=(src[l+c]+src[r+c]+src[u+c]+src[dd+c])*.25;
+              d[p+c]=Math.max(0,Math.min(255,src[p+c]+(src[p+c]-avg)*gain));
+            }
+          }
+          bc.putImageData(im,0,0);
+        }catch(e){console.warn('[fruit-art] background sharpen skipped',e);}
+        bc.save();bc.globalCompositeOperation='source-over';
+        const vg=bc.createLinearGradient(0,0,0,h);vg.addColorStop(0,'rgba(16,49,31,.04)');vg.addColorStop(.8,'rgba(9,27,20,.02)');vg.addColorStop(1,'rgba(6,20,15,.16)');
+        bc.fillStyle=vg;bc.fillRect(0,0,w,h);bc.restore();
+      }
+      ctx.drawImage(backgroundCache,0,0,w,h);
       return true;},
-    drawTrack(ctx,samples){if(!trackCache){trackCache=document.createElement('canvas');trackCache.width=720;trackCache.height=1280;drawTrackTo(trackCache.getContext('2d'),samples);}ctx.drawImage(trackCache,0,0);return true;},
-    drawShooter(ctx,aim,current,next,drawFruit){
+    drawTrack(ctx,samples){
+      // The orchard background already contains the finished road. Samples remain
+      // collision/movement data only; do not paint a second synthetic track over it.
+      return true;
+    },
+    drawShooter(ctx,aim,current,next,drawFruit,recoil=0){
       const x=360,y=1135;let dx=aim.x-x,dy=aim.y-y,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l;
-      ctx.save();ctx.strokeStyle='#fff8df88';ctx.lineWidth=5;ctx.lineCap='round';ctx.setLineDash([3,18]);
-      ctx.beginPath();ctx.moveTo(x+ux*69,y+uy*69);ctx.lineTo(x+ux*Math.min(760,l),y+uy*Math.min(760,l));ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#fffce5';for(let j=1;j<=5;j++){let dd=65+j*75;if(dd>l)break;ctx.beginPath();ctx.arc(x+ux*dd,y+uy*dd,Math.max(2,5-j*.45),0,Math.PI*2);ctx.fill();}
-      if(isReady('cannon')){ctx.save();ctx.shadowColor='#0009';ctx.shadowBlur=14;ctx.shadowOffsetY=7;ctx.drawImage(images.cannon,x-101,y-112,202,202);ctx.restore();}
-      else{fillBox(ctx,x-70,y-68,140,128,'#c47d20','#ffce60','#75401d',32);}
-      // The loaded cannon artwork is a prop; the current ball remains a separate live sprite.
-      drawFruit(x+13,y-52,current,27);
+      const aimAngle=Math.atan2(dy,dx), recoilT=Math.max(0,Math.min(1,recoil/.12));
+      const kick=Math.sin(recoilT*Math.PI)*10;
+      ctx.save();
+      // Aim guide starts at the live muzzle and follows pointer direction.
+      ctx.strokeStyle='#fff8dfaa';ctx.lineWidth=5;ctx.lineCap='round';ctx.setLineDash([3,18]);
+      ctx.beginPath();ctx.moveTo(x+ux*76,y+uy*76);ctx.lineTo(x+ux*Math.min(760,l),y+uy*Math.min(760,l));ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#fffce8';for(let j=1;j<=5;j++){const dd=74+j*72;if(dd>l)break;ctx.beginPath();ctx.arc(x+ux*dd,y+uy*dd,Math.max(2,5-j*.5),0,Math.PI*2);ctx.fill();}
+
+      // Static pedestal keeps the base planted while the upper cannon rotates.
+      ctx.save();ctx.translate(x,y+42);ctx.shadowColor='#0008';ctx.shadowBlur=13;ctx.shadowOffsetY=7;
+      ctx.fillStyle='#5c381e';ctx.beginPath();ctx.ellipse(0,0,83,33,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#df8b26';ctx.beginPath();ctx.ellipse(0,-5,70,25,0,0,Math.PI*2);ctx.fill();ctx.restore();
+
+      if(isReady('cannon')){
+        ctx.save();
+        ctx.translate(x-ux*kick,y-uy*kick);
+        // Source art points mostly upward; rotate it around its body so the muzzle
+        // visibly tracks the pointer without rotating the pedestal below.
+        ctx.rotate(aimAngle+Math.PI/2-.14);
+        ctx.shadowColor='#0009';ctx.shadowBlur=14;ctx.shadowOffsetY=7;
+        ctx.drawImage(images.cannon,-101,-108,202,202);
+        ctx.restore();
+      }else{
+        ctx.save();ctx.translate(x,y);ctx.rotate(aimAngle+Math.PI/2);
+        fillBox(ctx,-70,-68,140,128,'#c47d20','#ffce60','#75401d',32);ctx.restore();
+      }
+
+      // Keep the loaded fruit at the live muzzle so the firing direction is obvious.
+      const muzzleD=62-kick,mx=x+ux*muzzleD,my=y+uy*muzzleD;
+      drawFruit(mx,my,current,27,1,1+recoilT*.06);
+
+      // Next-fruit pod remains fixed and readable.
       ctx.fillStyle='#5b3118';ctx.beginPath();ctx.ellipse(610,1125,35,29,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#ffc663';ctx.beginPath();ctx.ellipse(610,1125,29,24,0,0,Math.PI*2);ctx.fill();
       drawFruit(610,1121,next,22);
@@ -82,16 +136,53 @@
       ctx.restore();return true;
     },
     drawFX(ctx,waves,particles){
-      for(const w of waves){let k=Math.max(0,w.life/w.max),p=1-k;
-        ctx.save();ctx.globalAlpha=k*.7;
-        if(w.type===3&&isReady('strawberryBurst')){const s=70+p*120;ctx.drawImage(images.strawberryBurst,w.x-s/2,w.y-s/2,s,s);}
-        else{let col=COLORS[w.type]||COLORS[0];let g=ctx.createRadialGradient(w.x,w.y,4,w.x,w.y,42+p*30);
-          g.addColorStop(0,col);g.addColorStop(.22,col+'aa');g.addColorStop(1,'#ffffff00');ctx.fillStyle=g;ctx.beginPath();ctx.arc(w.x,w.y,42+p*30,0,Math.PI*2);ctx.fill();}
-        ctx.strokeStyle=w.color;ctx.lineWidth=8-p*5;ctx.beginPath();ctx.arc(w.x,w.y,w.r,0,Math.PI*2);ctx.stroke();ctx.restore();
+      const atlasByType=['watermelonAtlas','orangeAtlas','grapeAtlas','strawberryAtlas'];
+      for(const w of waves){
+        const k=Math.max(0,w.life/w.max),p=1-k,type=w.type|0,col=COLORS[type]||COLORS[0];
+        ctx.save();
+        // White impact flash makes the contact frame feel crisp rather than just fade.
+        ctx.globalAlpha=Math.min(.72,k*1.1);
+        const flash=ctx.createRadialGradient(w.x,w.y,1,w.x,w.y,34+p*26);
+        flash.addColorStop(0,'#fffef0');flash.addColorStop(.18,'#fff7cfdd');flash.addColorStop(.55,col+'99');flash.addColorStop(1,'#ffffff00');
+        ctx.fillStyle=flash;ctx.beginPath();ctx.arc(w.x,w.y,40+p*35,0,Math.PI*2);ctx.fill();
+
+        // Use the generated type-specific splash art as the hero frame.
+        const atlas=atlasByType[type];
+        if(isReady(atlas)){
+          const s=92+p*(96+(w.strength||1)*14);
+          ctx.globalAlpha=Math.min(1,k*1.45);
+          ctx.save();ctx.translate(w.x,w.y);ctx.rotate(((w.seed||0)%7-3)*.045);
+          ctx.drawImage(images[atlas],-s/2,-s/2,s,s);ctx.restore();
+        }else if(type===3&&isReady('strawberryBurst')){
+          const s=90+p*105;ctx.globalAlpha=Math.min(1,k*1.4);ctx.drawImage(images.strawberryBurst,w.x-s/2,w.y-s/2,s,s);
+        }
+
+        // Add three real fruit-image shards flying out from the center.
+        const fruitName=FRUIT_BY_TYPE[type];
+        if(isReady(fruitName)){
+          for(let n=0;n<3;n++){
+            const a=((w.seed||0)*.017+n*2.18),dist=18+p*(44+n*10),sz=24+p*8;
+            const cx=w.x+Math.cos(a)*dist,cy=w.y+Math.sin(a)*dist-p*18;
+            ctx.save();ctx.translate(cx,cy);ctx.rotate(a+p*(n%2?2.4:-2.1));
+            ctx.beginPath();ctx.moveTo(-sz*.48,-sz*.42);ctx.lineTo(sz*.55,-sz*.18);ctx.lineTo(-sz*.12,sz*.58);ctx.closePath();ctx.clip();
+            ctx.drawImage(images[fruitName],-sz,-sz,sz*2,sz*2);ctx.restore();
+          }
+        }
+
+        // Expanding juice ring / lingering splat.
+        ctx.globalAlpha=k*.7;ctx.strokeStyle=w.color;ctx.lineWidth=Math.max(2,8-p*5);
+        ctx.beginPath();ctx.arc(w.x,w.y,w.r,0,Math.PI*2);ctx.stroke();
+        ctx.globalAlpha=k*.28;ctx.fillStyle=col;for(let n=0;n<7;n++){
+          const a=n*Math.PI*2/7+(w.seed||0)*.01,rr=22+p*(42+(n%3)*8);
+          ctx.beginPath();ctx.ellipse(w.x+Math.cos(a)*rr,w.y+Math.sin(a)*rr,7+p*6,3+p*4,a,0,Math.PI*2);ctx.fill();
+        }
+        ctx.restore();
       }
-      for(const p of particles){ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.98,p.life/.66*1.3));ctx.translate(p.x,p.y);ctx.rotate(p.rot);
-        const g=ctx.createRadialGradient(-2,-3,1,0,0,p.r*1.5);g.addColorStop(0,'#fff6d9');g.addColorStop(.36,p.color);g.addColorStop(1,p.color);ctx.fillStyle=g;
-        ctx.beginPath();ctx.ellipse(0,0,p.r*1.5,p.r*.82,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+      for(const p of particles){
+        ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.98,p.life/p.max*1.25));ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+        const g=ctx.createRadialGradient(-2,-3,1,0,0,p.r*1.7);g.addColorStop(0,'#fff9dd');g.addColorStop(.3,p.color);g.addColorStop(1,p.color);
+        ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,0,p.r*1.7,p.r*.75,0,0,Math.PI*2);ctx.fill();ctx.restore();
+      }
       return true;
     },
     drawMachine(ctx,p){ctx.save();ctx.translate(p.x,p.y);
