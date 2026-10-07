@@ -1,15 +1,23 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#193426;color:#fff;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+[hidden]{display:none!important}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1b3224;color:#fff;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 body{display:grid;place-items:center}
-#shell{position:relative;width:min(100vw,56.25vh);height:min(100vh,177.7778vw);max-width:720px;max-height:1280px;overflow:hidden;background:#27412c;box-shadow:0 0 40px #0008;touch-action:none;user-select:none}
+#shell{position:relative;width:min(100vw,56.25dvh);height:min(100dvh,177.7778vw);max-width:720px;max-height:1280px;overflow:hidden;background:#27412c;box-shadow:0 0 40px #0008;touch-action:none;user-select:none}
 #game{display:block;width:100%;height:100%;touch-action:none}
 #touch-ui{position:absolute;inset:0;pointer-events:none}
-button{pointer-events:auto;position:absolute;border:0;border-radius:16px;font:700 20px/1 system-ui,-apple-system,"PingFang SC",sans-serif;color:#fff;box-shadow:0 5px 0 #8a5424,0 8px 16px #0004;cursor:pointer}
-#swap{right:3.2%;bottom:2.5%;width:22%;height:5.2%;background:linear-gradient(180deg,#ffd55c,#ed8a20);border:3px solid #ffe59b;text-shadow:0 2px 2px #8b511a;box-shadow:0 4px 0 #965423,0 7px 16px #0007}
-#restart{left:30%;top:61%;width:40%;height:6%;background:#f39b3a;box-shadow:0 5px 0 #a85d19,0 8px 16px #0004}
-button:active{transform:translateY(3px);box-shadow:0 2px 0 #17392f}
-button:disabled{opacity:.45;cursor:default}
-@media (max-aspect-ratio:9/16){#shell{width:100vw;height:177.7778vw}}
-
-#swap{border:3px solid #ffdf81;text-shadow:0 2px 2px #8b511a;box-shadow:0 4px 0 #965423,0 7px 16px #0007}
-#restart{border:3px solid #ffdd82;background:linear-gradient(#ffc853,#e57719)}
+button{pointer-events:auto;position:absolute;border:0;color:#fff;cursor:pointer;padding:0;font-family:inherit;-webkit-appearance:none}
+.icon-button{background:transparent url('./assets/resources/art/ui/action_button.webp') center/100% 100% no-repeat;filter:drop-shadow(0 3px 2px #70401466)}
+.icon-button svg{display:block;width:55%;height:55%;margin:auto;fill:none;stroke:#fff;stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 0 #f97819)}
+#pause svg{stroke-width:7}
+#settings svg{width:54%;height:54%;stroke-width:3.6}
+.wide-button,.panel-button{background:transparent url('./assets/resources/art/ui/wide_button.webp') center/100% 100% no-repeat;font-weight:800;font-size:clamp(14px,3.1vw,24px);text-shadow:0 2px 1px #975416;filter:drop-shadow(0 4px 2px #532b1766)}
+#restart{left:30.5%;top:55%;width:39%;height:6%}
+button:active{transform:translateY(2px)}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible{outline:3px solid #fff7cb;outline-offset:2px}
+.panel{position:absolute;z-index:4;left:15%;top:34%;width:70%;padding:7% 8% 8%;background:#6c3e21f5;border:3px solid #e9b357;border-radius:22px;text-align:center;box-shadow:0 0 0 100vmax #13261e88,0 10px 30px #0008}
+.panel h2{margin:0 0 20px;color:#ffebac;font-size:clamp(24px,5vw,38px)}
+.panel label{display:flex;align-items:center;gap:12px;margin:18px 0;font-size:clamp(18px,4vw,26px)}
+.panel input{width:24px;height:24px;accent-color:#f6a028}
+.panel-button{position:relative;display:block;margin:20px auto 0;width:100%;height:54px;font-size:20px}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:#23402bec;color:#fff0bd;font-size:24px;z-index:7}

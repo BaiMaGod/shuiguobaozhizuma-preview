@@ -1,7 +1,8 @@
-/* Fruit Zuma visual layer v0.4 — portrait orchard art, no fake track overlay. */
+/* Reference orchard art; static plinth and independent rotating cannon body. */
 (() => {
   'use strict';
   const A='./assets/resources/art/';
+  const S=window.FruitLayout;
   const images=Object.create(null);
   const entries={
     strawberry:'fruits/strawberry.webp',
@@ -10,16 +11,23 @@
     watermelon:'fruits/watermelon.webp',
     grape:'fruits/grape.webp',
     blueberry:'fruits/blueberry.webp',
-    cannon:'launcher/juice_cannon.webp',
+    body:'launcher/cannon_body_v2.webp',
+    base:'launcher/cannon_base_v2.webp',
+    scorePlaque:'ui/score_plaque.webp',
+    comboSplash:'ui/combo_splash.webp',
+    nextBadge:'ui/next_badge.webp',
     burst:'fx/strawberry_burst.webp',
-    orchard:'background/orchard_vertical.webp'
+    orchard:S.background+'.webp'
   };
   let loaded=0,failed=0;
+  let finishLoading;
+  const loading=new Promise(resolve=>{finishLoading=resolve;});
+  const settle=()=>{if(loaded+failed===Object.keys(entries).length)finishLoading();};
   for(const [key,path] of Object.entries(entries)){
     const img=new Image(); images[key]=img;
-    img.onload=()=>loaded++;
-    img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);};
-    img.src=A+path+'?v=20261007-art5';
+    img.onload=()=>{loaded++;settle();};
+    img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
+    img.src=A+path+'?v=20261007-art6';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry'];
   const JUICE=['#ff4f5f','#ff9d20','#9c48eb','#ff3150'];
@@ -39,6 +47,7 @@
 
   window.FruitArt={
     status:()=>({loaded,failed,total:Object.keys(entries).length}),
+    whenReady:()=>loading,
 
     drawFruit(ctx,x,y,type,r,alpha=1,scale=1){
       const img=images[FRUIT_BY_TYPE[type]];
@@ -53,9 +62,7 @@
       if(!ready('orchard'))return false;
       ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
       ctx.drawImage(images.orchard,0,0,w,h);
-      const g=ctx.createLinearGradient(0,0,0,118);
-      g.addColorStop(0,'rgba(17,44,25,.62)');g.addColorStop(1,'rgba(17,44,25,0)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,w,125);ctx.restore();
+      ctx.restore();
       return true;
     },
 
@@ -63,39 +70,30 @@
     // Game logic still uses an invisible spline; do not draw a second track.
     drawTrack(){return true;},
 
-    drawShooter(ctx,aim,current,next,drawFruit,recoil=0){
-      const x=360,y=1135;
-      let dx=aim.x-x,dy=aim.y-y,l=Math.hypot(dx,dy)||1;
-      const ux=dx/l,uy=dy/l,angle=Math.atan2(uy,ux);
-      const kick=recoil>0?Math.sin(Math.min(1,recoil/.12)*Math.PI)*11:0;
-      const bx=x-ux*kick,by=y-uy*kick;
-
-      // Aim guide begins at the muzzle, not the base.
-      ctx.save();ctx.lineCap='round';ctx.strokeStyle='rgba(255,249,217,.88)';ctx.lineWidth=4;
-      ctx.setLineDash([2,16]);ctx.beginPath();ctx.moveTo(x+ux*78,y+uy*78);
-      ctx.lineTo(x+ux*Math.min(620,l),y+uy*Math.min(620,l));ctx.stroke();ctx.setLineDash([]);ctx.restore();
-
-      // Source cannon points slightly up-right; compensate before applying live aim angle.
-      if(ready('cannon')){
-        ctx.save();ctx.translate(bx,by);ctx.rotate(angle-(-1.18));
-        ctx.shadowColor='#1a100988';ctx.shadowBlur=13;ctx.shadowOffsetY=7;
-        const s=184;ctx.drawImage(images.cannon,-s/2,-s*.60,s,s);ctx.restore();
+    drawShooter(ctx,aim,current,next,drawFruit,recoil=0,reducedMotion=false){
+      const q=S.shooter,x=q.x,y=q.y;
+      const dx=aim.x-x,dy=aim.y-y,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l;
+      const kick=reducedMotion?0:Math.sin(Math.min(1,recoil/.12)*Math.PI)*8;
+      // Stone plinth never rotates or moves with barrel recoil.
+      if(ready('base'))ctx.drawImage(images.base,x-q.baseWidth/2,y+30-q.baseHeight/2,q.baseWidth,q.baseHeight);
+      ctx.save();
+      for(let d=q.muzzleDistance+30;d<Math.min(800,l);d+=24){
+        ctx.fillStyle='rgba(255,247,211,'+(d<250?'.96':'.84')+')';
+        ctx.beginPath();ctx.arc(x+ux*d,y+uy*d,d<250?4.6:3.3,0,Math.PI*2);ctx.fill();
       }
-
-      // Live current fruit sits at the actual muzzle and rotates with the aim direction.
-      const mx=x+ux*(66-kick),my=y+uy*(66-kick);
-      drawFruit(mx,my,current,27);
-
-      // Next fruit: independent polished preview badge.
-      const nx=636,ny=1084;
-      ctx.save();ctx.shadowColor='#1c100a99';ctx.shadowBlur=8;ctx.shadowOffsetY=4;
-      ctx.fillStyle='#6e401f';ctx.beginPath();ctx.arc(nx,ny,39,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#f5c05b';ctx.beginPath();ctx.arc(nx,ny,33,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#5e361c';ctx.beginPath();ctx.arc(nx,ny,27,0,Math.PI*2);ctx.fill();ctx.restore();
-      drawFruit(nx,ny,next,22);
-      ctx.save();ctx.font='700 18px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.lineWidth=4;ctx.strokeStyle='#3a2114';ctx.strokeText('下一颗',nx,1038);
-      ctx.fillStyle='#fff4c9';ctx.fillText('下一颗',nx,1038);ctx.restore();
+      ctx.restore();
+      if(ready('body')){
+        ctx.save();ctx.translate(x-ux*kick,y-uy*kick);ctx.rotate(Math.atan2(uy,ux)+Math.PI/2);
+        ctx.drawImage(images.body,-q.bodyWidth/2,-q.bodyPivotY,q.bodyWidth,q.bodyHeight);
+        drawFruit(0,12,current,21);ctx.restore();
+      }
+      drawFruit(x+ux*(q.muzzleDistance-kick),y+uy*(q.muzzleDistance-kick),current,28);
+      const n=S.next;
+      if(ready('nextBadge'))ctx.drawImage(images.nextBadge,n.x-n.width/2,n.y-84,n.width,n.height);
+      drawFruit(n.x,n.y+10,next,n.fruitRadius);
+      ctx.save();ctx.font='800 19px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.lineWidth=3;ctx.strokeStyle='#71390e';ctx.strokeText('下一颗',n.x,n.y-48);
+      ctx.fillStyle='#fff0bc';ctx.fillText('下一颗',n.x,n.y-48);ctx.restore();
       return true;
     },
 
@@ -141,16 +139,17 @@
     drawMachine(){return true;},
 
     drawHUD(ctx,data){
-      const {score,combo}=data;
+      const {score,combo}=data,p=S.score,c=S.combo;
       ctx.save();
-      plaque(ctx,18,10,232,70,'#ad7442','#6e4024');
-      ctx.textBaseline='middle';ctx.textAlign='left';
-      ctx.font='800 22px system-ui';ctx.fillStyle='#ffe7ac';ctx.fillText('分数',42,42);
-      ctx.font='900 31px system-ui';ctx.fillStyle='#fff9df';ctx.fillText(String(score),112,44);
-
-      plaque(ctx,278,12,218,66,'#ff9c26','#b64213');
-      ctx.textAlign='center';ctx.font='900 28px system-ui';ctx.fillStyle='#fff1a6';
-      ctx.fillText('连击 ×'+combo,387,46);
+      if(ready('scorePlaque'))ctx.drawImage(images.scorePlaque,p.x,p.y,p.width,p.height);
+      else plaque(ctx,p.x,p.y,p.width,p.height,'#ad7442','#6e4024');
+      ctx.textBaseline='middle';ctx.textAlign='center';
+      const label=(txt,x,y,size)=>{ctx.font='900 '+size+'px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#6d3418';ctx.strokeText(txt,x,y);ctx.fillStyle='#fff0b6';ctx.fillText(txt,x,y);};
+      label('分数',p.x+p.width/2,p.y+29,22);
+      label(String(score),p.x+p.width/2,p.y+62,34);
+      if(ready('comboSplash'))ctx.drawImage(images.comboSplash,c.x,c.y,c.width,c.height);
+      else plaque(ctx,c.x,c.y,c.width,c.height,'#ff9c26','#b64213');
+      label('连击 ×'+combo,c.x+c.width/2,c.y+65,29);
       ctx.restore();return true;
     },
 
