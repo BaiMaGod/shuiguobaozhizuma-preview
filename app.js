@@ -2,7 +2,7 @@
 'use strict';
 const W=720,H=1280;
 const ART=window.FruitArt||null;
-const CFG={fruitR:31,spacing:54,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.14,score:10,losePadding:12};
+const CFG={fruitR:31,spacing:54,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.20,score:10,losePadding:12};
 const FRUITS=[0,1,2,3];
 const COLORS={
   0:{main:'#f04f66',accent:'#6dcc59',juice:'#ff5570',dark:'#263329'},
@@ -10,11 +10,12 @@ const COLORS={
   2:{main:'#8e59d1',accent:'#c291ff',juice:'#9b62df',dark:'#583386'},
   3:{main:'#ff4163',accent:'#a3dd57',juice:'#ff4163',dark:'#851923'}
 };
-const control=[{x:86,y:142},{x:310,y:92},{x:606,y:178},{x:632,y:405},{x:414,y:518},{x:116,y:438},{x:102,y:704},{x:302,y:836},{x:590,y:764},{x:635,y:982}];
+// Invisible movement spline aligned to the road baked into the orchard background.
+const control=[{x:145,y:210},{x:325,y:255},{x:575,y:285},{x:618,y:392},{x:525,y:486},{x:175,y:455},{x:108,y:565},{x:230,y:650},{x:555,y:635},{x:610,y:760},{x:520,y:855},{x:165,y:835},{x:118,y:935},{x:275,y:1010},{x:575,y:1000}];
 const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
 const swapBtn=document.getElementById('swap'); const restartBtn=document.getElementById('restart');
 let dpr=Math.min(devicePixelRatio||1,2);
-let samples=[],totalLen=0,fruits=[],spawned=0,history=[],projectile=null,current=0,next=1,state='playing',stateTimer=0,pendingId=-1,currentMatch=null,pullback=null,score=0,combo=0,maxCombo=0,aim={x:360,y:740},last=performance.now(),particles=[],waves=[],shake=0,shakeMag=0,startedShot=false,result=null;
+let samples=[],totalLen=0,fruits=[],spawned=0,history=[],projectile=null,current=0,next=1,state='playing',stateTimer=0,pendingId=-1,currentMatch=null,pullback=null,score=0,combo=0,maxCombo=0,aim={x:360,y:740},last=performance.now(),particles=[],waves=[],shake=0,shakeMag=0,recoil=0,startedShot=false,result=null;
 
 function catmull(p0,p1,p2,p3,t){const t2=t*t,t3=t2*t;return{x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)}}
 function buildTrack(){const raw=[]; for(let i=0;i<control.length-1;i++){const p0=control[Math.max(0,i-1)],p1=control[i],p2=control[i+1],p3=control[Math.min(control.length-1,i+2)];for(let t=0;t<1;t+=.035)raw.push(catmull(p0,p1,p2,p3,t));}raw.push(control.at(-1));samples=[];let dist=0;for(let i=0;i<raw.length;i++){if(i){const dx=raw[i].x-raw[i-1].x,dy=raw[i].y-raw[i-1].y;dist+=Math.hypot(dx,dy);}const a=raw[Math.max(0,i-1)],b=raw[Math.min(raw.length-1,i+1)],dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1;samples.push({...raw[i],distance:dist,tx:dx/l,ty:dy/l});}totalLen=dist;}
@@ -58,12 +59,12 @@ function updatePull(dt){
   const shift=Math.min(gap,CFG.pullSpeed*dt);
   for(let i=b;i<fruits.length;i++)fruits[i].d-=shift;
 }
-function burst(x,y,type,str=1){const c=COLORS[type];const n=Math.min(18,Math.round(8+str*3));for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=115+Math.random()*(145+str*20);particles.push({x:x+(Math.random()-.5)*12,y:y+(Math.random()-.5)*12,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,g:380+Math.random()*220,life:.32+Math.random()*.34,max:1,r:3+Math.random()*(5+str),color:i%4===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*9});}waves.push({x,y,r:16,life:.30,max:.30,color:c.juice,type});}
-function fire(x,y){if(state!=='playing'||projectile)return;let dx=x-360,dy=y-1135,l=Math.hypot(dx,dy);if(l<20)return;dx/=l;dy/=l;projectile={type:current,x:360,y:1135,vx:dx*CFG.projectileSpeed,vy:dy*CFG.projectileSpeed};combo=0;if(!startedShot)startedShot=true;current=next;next=shooterType();}
+function burst(x,y,type,str=1){const c=COLORS[type];const n=Math.min(30,Math.round(15+str*5));for(let i=0;i<n;i++){const aa=Math.random()*Math.PI*2,s=135+Math.random()*(190+str*32),life=.42+Math.random()*.34;particles.push({x:x+(Math.random()-.5)*14,y:y+(Math.random()-.5)*14,vx:Math.cos(aa)*s,vy:Math.sin(aa)*s-55,g:430+Math.random()*260,life,max:life,r:3.2+Math.random()*(6.5+str),color:i%5===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*11,type});}waves.push({x,y,r:10,life:.42,max:.42,color:c.juice,type,strength:str,seed:Math.random()*10000});}
+function fire(x,y){if(state!=='playing'||projectile)return;let dx=x-360,dy=y-1135,l=Math.hypot(dx,dy);if(l<20)return;dx/=l;dy/=l;projectile={type:current,x:360+dx*58,y:1135+dy*58,vx:dx*CFG.projectileSpeed,vy:dy*CFG.projectileSpeed};recoil=.12;combo=0;if(!startedShot)startedShot=true;current=next;next=shooterType();}
 function updateProjectile(dt){const p=projectile;if(!p||state!=='playing')return;p.x+=p.vx*dt;p.y+=p.vy*dt;let hit=-1,best=Infinity;const rr=CFG.collisionR**2;for(let i=0;i<fruits.length;i++){const fp=pointAt(fruits[i].renderD),dx=p.x-fp.x,dy=p.y-fp.y,d2=dx*dx+dy*dy;if(d2<=rr&&d2<best){best=d2;hit=i;}}if(hit>=0){const h=fruits[hit],hp=pointAt(h.renderD),relx=p.x-hp.x,rely=p.y-hp.y,dot=relx*hp.tx+rely*hp.ty,idx=dot>0?hit+1:hit;const ins=insertFruit(p.type,idx,h.renderD);projectile=null;pendingId=ins.id;state='inserting';stateTimer=CFG.insertDelay;return;}if(p.x<-80||p.x>W+80||p.y<-80||p.y>H+80)projectile=null;}
 function updateState(dt){if(state==='inserting'){stateTimer-=dt;if(stateTimer<=0){const i=fruits.findIndex(f=>f.id===pendingId),m=findMatch(i);m?beginMatch(m):finishCombo();}}else if(state==='resolving'){stateTimer-=dt;if(stateTimer<=0)finishMatch();}else if(state==='pulling')updatePull(dt);}
 function endGame(win){projectile=null;state=win?'win':'lose';result=win?'爆汁成功！':'水果进榨汁机了！';restartBtn.hidden=false;swapBtn.disabled=true;shake=.14;shakeMag=win?3:7;}
-function reset(){fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
+function reset(){fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;recoil=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
 function update(dt){
   if(state==='win'||state==='lose'){updateFX(dt);return;}
 
@@ -90,6 +91,7 @@ function update(dt){
   if(front&&!front.matching&&front.d>=totalLen-CFG.losePadding)return endGame(false);
   if(spawned>=CFG.total&&!fruits.length&&!projectile)return endGame(true);
   if(shake>0)shake=Math.max(0,shake-dt);
+  if(recoil>0)recoil=Math.max(0,recoil-dt);
 }
 function updateFX(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.spin*dt;if(p.life<=0)particles.splice(i,1);}for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.life-=dt;w.r+=220*dt;if(w.life<=0)waves.splice(i,1);}}
 
@@ -140,7 +142,7 @@ function drawMachine(){if(ART&&ART.drawMachine(ctx,pointAt(totalLen)))return;
   ctx.fillText('榨汁口',0,82);
   ctx.restore();
 }
-function drawShooter(){if(ART&&ART.drawShooter(ctx,aim,current,next,drawFruit))return;let dx=aim.x-360,dy=aim.y-1135,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l;ctx.save();ctx.globalAlpha=.23;ctx.strokeStyle='#fff4cf';ctx.lineWidth=4;ctx.setLineDash([16,18]);ctx.beginPath();ctx.moveTo(360+ux*78,1135+uy*78);ctx.lineTo(360+ux*Math.min(720,l),1135+uy*Math.min(720,l));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.strokeStyle='#355d50';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(360+ux*20,1135+uy*20);ctx.lineTo(360+ux*66,1135+uy*66);ctx.stroke();ctx.fillStyle='#27493f';circle(360,1135,52);ctx.fillStyle='#f1d18b';circle(360,1135,43);ctx.fillStyle='#355d50';circle(360,1135,34);drawFruit(360,1135,current,28);ctx.restore();drawFruit(610,1125,next,21);}
+function drawShooter(){if(ART&&ART.drawShooter(ctx,aim,current,next,drawFruit,recoil))return;let dx=aim.x-360,dy=aim.y-1135,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l;ctx.save();ctx.globalAlpha=.23;ctx.strokeStyle='#fff4cf';ctx.lineWidth=4;ctx.setLineDash([16,18]);ctx.beginPath();ctx.moveTo(360+ux*78,1135+uy*78);ctx.lineTo(360+ux*Math.min(720,l),1135+uy*Math.min(720,l));ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.strokeStyle='#355d50';ctx.lineWidth=24;ctx.beginPath();ctx.moveTo(360+ux*20,1135+uy*20);ctx.lineTo(360+ux*66,1135+uy*66);ctx.stroke();ctx.fillStyle='#27493f';circle(360,1135,52);ctx.fillStyle='#f1d18b';circle(360,1135,43);ctx.fillStyle='#355d50';circle(360,1135,34);drawFruit(360,1135,current,28);ctx.restore();drawFruit(610,1125,next,21);}
 function drawBackground(){if(ART&&ART.drawBackground(ctx,W,H))return;ctx.fillStyle='#183d35';ctx.fillRect(0,0,W,H);ctx.fillStyle='#214c40';circle(86,1180,150);circle(670,175,175);ctx.fillStyle='#2d5a4d';for(let i=0;i<18;i++)circle((i*137)%720,110+(i*223)%930,3+(i%3));ctx.fillStyle='#102c27';ctx.fillRect(0,0,W,92);}
 function drawHUD(){if(ART&&ART.drawHUD(ctx,{score,combo,startedShot,state}))return;ctx.textBaseline='middle';ctx.font='700 32px system-ui';ctx.fillStyle='#fff6db';ctx.fillText(`得分  ${score}`,24,48);ctx.textAlign='right';if(combo>=2){ctx.font='900 42px system-ui';ctx.strokeStyle='#8f3c43';ctx.lineWidth=7;ctx.strokeText(`COMBO ×${combo}`,684,50);ctx.fillStyle='#fff09a';ctx.fillText(`COMBO ×${combo}`,684,50);}ctx.textAlign='center';if(!startedShot&&state==='playing'){ctx.font='600 24px system-ui';ctx.fillStyle='#fff7df';ctx.globalAlpha=.92;ctx.fillText('点击轨道方向发射水果 · 3个相同水果即可爆汁',360,1060);ctx.globalAlpha=1;}ctx.font='600 19px system-ui';ctx.fillStyle='#fff3ca';ctx.fillText('下一颗',610,1070);ctx.textAlign='left';}
 function drawFX(){if(ART&&ART.drawFX(ctx,waves,particles))return;for(const w of waves){ctx.save();ctx.globalAlpha=Math.max(0,w.life/w.max)*.28;ctx.strokeStyle=w.color;ctx.lineWidth=8;circleStroke(w.x,w.y,w.r);ctx.restore();}for(const p of particles){ctx.save();ctx.globalAlpha=Math.min(.95,p.life/.66*1.25);ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(1.35,.75);ctx.fillStyle=p.color;circle(0,0,p.r);ctx.restore();}}
