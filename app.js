@@ -2,7 +2,7 @@
 'use strict';
 const W=720,H=1280;
 const ART=window.FruitArt||null;
-const CFG={fruitR:31,spacing:54,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.20,score:10,losePadding:12};
+const CFG={fruitR:31,spacing:54,collisionR:52,baseSpeed:24,pullSpeed:430,projectileSpeed:1100,initial:14,total:90,match:3,insertDelay:.10,matchDelay:.22,score:10,losePadding:12};
 const FRUITS=[0,1,2,3];
 const COLORS={
   0:{main:'#f04f66',accent:'#6dcc59',juice:'#ff5570',dark:'#263329'},
@@ -11,7 +11,7 @@ const COLORS={
   3:{main:'#ff4163',accent:'#a3dd57',juice:'#ff4163',dark:'#851923'}
 };
 // Invisible movement spline aligned to the road baked into the orchard background.
-const control=[{x:145,y:210},{x:325,y:255},{x:575,y:285},{x:618,y:392},{x:525,y:486},{x:175,y:455},{x:108,y:565},{x:230,y:650},{x:555,y:635},{x:610,y:760},{x:520,y:855},{x:165,y:835},{x:118,y:935},{x:275,y:1010},{x:575,y:1000}];
+const control=[{x:165,y:190},{x:150,y:285},{x:355,y:330},{x:505,y:335},{x:535,y:410},{x:470,y:495},{x:205,y:520},{x:105,y:555},{x:105,y:655},{x:285,y:715},{x:515,y:720},{x:595,y:790},{x:585,y:875},{x:505,y:940},{x:205,y:945},{x:100,y:1005},{x:125,y:1110},{x:300,y:1210},{x:555,y:1225},{x:650,y:1270}];
 const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
 const swapBtn=document.getElementById('swap'); const restartBtn=document.getElementById('restart');
 let dpr=Math.min(devicePixelRatio||1,2);
@@ -59,7 +59,7 @@ function updatePull(dt){
   const shift=Math.min(gap,CFG.pullSpeed*dt);
   for(let i=b;i<fruits.length;i++)fruits[i].d-=shift;
 }
-function burst(x,y,type,str=1){const c=COLORS[type];const n=Math.min(30,Math.round(15+str*5));for(let i=0;i<n;i++){const aa=Math.random()*Math.PI*2,s=135+Math.random()*(190+str*32),life=.42+Math.random()*.34;particles.push({x:x+(Math.random()-.5)*14,y:y+(Math.random()-.5)*14,vx:Math.cos(aa)*s,vy:Math.sin(aa)*s-55,g:430+Math.random()*260,life,max:life,r:3.2+Math.random()*(6.5+str),color:i%5===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*11,type});}waves.push({x,y,r:10,life:.42,max:.42,color:c.juice,type,strength:str,seed:Math.random()*10000});}
+function burst(x,y,type,str=1){const c=COLORS[type];const n=Math.min(38,Math.round(20+str*7));for(let i=0;i<n;i++){const aa=Math.random()*Math.PI*2,s=145+Math.random()*(215+str*34),life=.46+Math.random()*.38;particles.push({x:x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*16,vx:Math.cos(aa)*s,vy:Math.sin(aa)*s-65,g:430+Math.random()*270,life,max:life,r:3.4+Math.random()*(7.5+str),color:i%5===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*12,type,shard:i%6===0});}waves.push({x,y,r:10,life:.52,max:.52,color:c.juice,type,strength:str,seed:Math.random()*10000});}
 function fire(x,y){if(state!=='playing'||projectile)return;let dx=x-360,dy=y-1135,l=Math.hypot(dx,dy);if(l<20)return;dx/=l;dy/=l;projectile={type:current,x:360+dx*58,y:1135+dy*58,vx:dx*CFG.projectileSpeed,vy:dy*CFG.projectileSpeed};recoil=.12;combo=0;if(!startedShot)startedShot=true;current=next;next=shooterType();}
 function updateProjectile(dt){const p=projectile;if(!p||state!=='playing')return;p.x+=p.vx*dt;p.y+=p.vy*dt;let hit=-1,best=Infinity;const rr=CFG.collisionR**2;for(let i=0;i<fruits.length;i++){const fp=pointAt(fruits[i].renderD),dx=p.x-fp.x,dy=p.y-fp.y,d2=dx*dx+dy*dy;if(d2<=rr&&d2<best){best=d2;hit=i;}}if(hit>=0){const h=fruits[hit],hp=pointAt(h.renderD),relx=p.x-hp.x,rely=p.y-hp.y,dot=relx*hp.tx+rely*hp.ty,idx=dot>0?hit+1:hit;const ins=insertFruit(p.type,idx,h.renderD);projectile=null;pendingId=ins.id;state='inserting';stateTimer=CFG.insertDelay;return;}if(p.x<-80||p.x>W+80||p.y<-80||p.y>H+80)projectile=null;}
 function updateState(dt){if(state==='inserting'){stateTimer-=dt;if(stateTimer<=0){const i=fruits.findIndex(f=>f.id===pendingId),m=findMatch(i);m?beginMatch(m):finishCombo();}}else if(state==='resolving'){stateTimer-=dt;if(stateTimer<=0)finishMatch();}else if(state==='pulling')updatePull(dt);}
@@ -98,7 +98,7 @@ function updateFX(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i
 function drawFruit(x,y,type,r,alpha=1,scale=1){if(ART&&ART.drawFruit(ctx,x,y,type,r,alpha,scale))return;ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.scale(scale,scale);const c=COLORS[type];ctx.shadowColor='#0005';ctx.shadowBlur=8;ctx.shadowOffsetY=5;if(type===0){ctx.fillStyle=c.accent;circle(0,0,r);ctx.fillStyle=c.main;circle(0,0,r-5);ctx.fillStyle=c.dark;[[-8,-5],[8,-1],[0,10]].forEach(q=>circle(q[0],q[1],2.2));}else if(type===1){ctx.fillStyle=c.main;circle(0,0,r);ctx.fillStyle=c.accent;circle(-9,-11,r*.2);ctx.strokeStyle='#5d8d35';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-6,-r+4);ctx.lineTo(4,-r-4);ctx.stroke();}else if(type===2){ctx.fillStyle=c.dark;circle(0,2,r);const rr=r*.34,pts=[[-rr,-rr*.5],[0,-rr],[rr,-rr*.5],[-rr*.6,rr*.35],[rr*.6,rr*.35],[0,rr]];ctx.fillStyle=c.main;pts.forEach(q=>circle(q[0],q[1],r*.34));ctx.strokeStyle='#5d8d35';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-r+2);ctx.lineTo(6,-r-7);ctx.stroke();}else{ctx.fillStyle='#8e6445';circle(0,0,r);ctx.fillStyle=c.main;circle(0,0,r-5);ctx.fillStyle=c.accent;circle(0,0,r*.30);ctx.fillStyle=c.dark;for(let i=0;i<10;i++){const a=i/10*Math.PI*2;circle(Math.cos(a)*r*.48,Math.sin(a)*r*.48,1.7);}}ctx.shadowColor='transparent';ctx.fillStyle='#fff';ctx.globalAlpha=alpha*.72;circle(-r*.32,-r*.34,Math.max(3,r*.12));ctx.restore();}
 function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
 function roundedRect(x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();}
-function drawTrack(){if(ART&&ART.drawTrack(ctx,samples))return;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#38524a';ctx.lineWidth=78;ctx.beginPath();samples.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.strokeStyle='#f0dba4';ctx.lineWidth=62;ctx.stroke();ctx.strokeStyle='#d8bd7d';ctx.lineWidth=3;ctx.setLineDash([14,12]);ctx.stroke();ctx.setLineDash([]);}
+function drawTrack(){return;}
 function drawMachine(){if(ART&&ART.drawMachine(ctx,pointAt(totalLen)))return;
   const e=pointAt(totalLen);
   ctx.save();
