@@ -1,12 +1,15 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0c211d;color:#fff;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#193426;color:#fff;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 body{display:grid;place-items:center}
-#shell{position:relative;width:min(100vw,56.25vh);height:min(100vh,177.7778vw);max-width:720px;max-height:1280px;overflow:hidden;background:#183d35;box-shadow:0 0 40px #0008;touch-action:none;user-select:none}
+#shell{position:relative;width:min(100vw,56.25vh);height:min(100vh,177.7778vw);max-width:720px;max-height:1280px;overflow:hidden;background:#27412c;box-shadow:0 0 40px #0008;touch-action:none;user-select:none}
 #game{display:block;width:100%;height:100%;touch-action:none}
 #touch-ui{position:absolute;inset:0;pointer-events:none}
-button{pointer-events:auto;position:absolute;border:0;border-radius:16px;font:700 20px/1 system-ui,-apple-system,"PingFang SC",sans-serif;color:#fff;box-shadow:0 5px 0 #17392f,0 8px 16px #0004;cursor:pointer}
-#swap{right:5.5%;bottom:3.8%;width:18%;height:4.7%;background:#4b705e}
+button{pointer-events:auto;position:absolute;border:0;border-radius:16px;font:700 20px/1 system-ui,-apple-system,"PingFang SC",sans-serif;color:#fff;box-shadow:0 5px 0 #8a5424,0 8px 16px #0004;cursor:pointer}
+#swap{right:5.5%;bottom:3.8%;width:18%;height:4.7%;background:linear-gradient(180deg,#ffcf59,#ee8d21)}
 #restart{left:30%;top:61%;width:40%;height:6%;background:#f39b3a;box-shadow:0 5px 0 #a85d19,0 8px 16px #0004}
 button:active{transform:translateY(3px);box-shadow:0 2px 0 #17392f}
 button:disabled{opacity:.45;cursor:default}
 @media (max-aspect-ratio:9/16){#shell{width:100vw;height:177.7778vw}}
+
+#swap{border:3px solid #ffdf81;text-shadow:0 2px 2px #8b511a;box-shadow:0 4px 0 #965423,0 7px 16px #0007}
+#restart{border:3px solid #ffdd82;background:linear-gradient(#ffc853,#e57719)}
