@@ -57,7 +57,7 @@
   const art={
     status:()=>({loaded,failed,total:Object.keys(entries).length}),
     drawFruit(ctx,x,y,type,r,alpha=1,scale=1){const name=FRUIT_BY_TYPE[type];if(!isReady(name))return false;
-      const side=r*2.36;ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.globalAlpha=alpha;
+      const side=r*2.16;ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.globalAlpha=alpha;
       ctx.shadowColor='#0007';ctx.shadowBlur=6;ctx.shadowOffsetY=4;
       ctx.drawImage(images[name],-side/2,-side/2,side,side);ctx.restore();return true;},
     drawBackground(ctx,w,h){if(!isReady('orchard'))return false;
