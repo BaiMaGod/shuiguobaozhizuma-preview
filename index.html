@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <meta name="theme-color" content="#254329" />
 <title>水果爆汁祖玛 · 果园</title>
-<link rel="stylesheet" href="./style.css?v=20261008-combo-radius9-4ee53a9" />
+<link rel="stylesheet" href="./style.css?v=20261008-commercial-polish10" />
 </head>
 <body>
 <main id="shell" aria-label="水果爆汁祖玛">
@@ -18,6 +18,19 @@
     <button id="swap" class="wide-button" type="button" aria-label="交换当前和下一颗水果">交换</button>
     <button id="restart" class="wide-button" type="button" hidden>再来一局</button>
   </div>
+  <section id="start-panel" role="dialog" aria-modal="true" aria-labelledby="start-title">
+    <div id="start-card">
+      <h1 id="start-title">水果爆汁祖玛</h1>
+      <div id="start-fruits" aria-hidden="true">
+        <img src="./assets/resources/art/fruits/strawberry.webp" alt="" />
+        <img src="./assets/resources/art/fruits/orange.webp" alt="" />
+        <img src="./assets/resources/art/fruits/grape.webp" alt="" />
+      </div>
+      <p class="start-tagline">瞄准 · 发射 · 连消爆汁</p>
+      <p class="start-instruction">三个相同水果就能消除<br />连击越多，果汁飞溅越壮观！</p>
+    </div>
+    <button id="start-play" class="wide-button" type="button">开始爆汁</button>
+  </section>
   <section id="pause-panel" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden>
     <div id="pause-card">
       <h2 id="pause-title">果园小憩</h2>
@@ -32,10 +45,10 @@
   <div id="loading" role="status">果园准备中…</div>
   <p id="result-summary" class="sr-only" role="status" aria-live="polite" hidden></p>
 </main>
-<script src="./scene-layout.js?v=20261008-combo-radius9-4ee53a9"></script>
-<script src="./visual-assets.js?v=20261008-combo-radius9-4ee53a9"></script>
-<script src="./sound-engine.js?v=20261008-combo-radius9-4ee53a9"></script>
-<script src="./elimination-feedback.js?v=20261008-combo-radius9-4ee53a9"></script>
-<script src="./app.js?v=20261008-combo-radius9-4ee53a9"></script>
+<script src="./scene-layout.js?v=20261008-commercial-polish10"></script>
+<script src="./visual-assets.js?v=20261008-commercial-polish10"></script>
+<script src="./sound-engine.js?v=20261008-commercial-polish10"></script>
+<script src="./elimination-feedback.js?v=20261008-commercial-polish10"></script>
+<script src="./app.js?v=20261008-commercial-polish10"></script>
 </body>
 </html>
