@@ -5,6 +5,9 @@
   const S=window.FruitLayout;
   const F=window.FruitFeedback;
   const images=Object.create(null);
+  // Quantized, reusable CanvasGradient paints: high combos must not allocate a
+  // fresh gradient for every droplet on every rendered frame.
+  const juicePaints=new Map();
   const entries={
     strawberry:'fruits/strawberry.webp',
     orange:'fruits/orange.webp',
@@ -29,7 +32,7 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261008-combo-radius9-4ee53a9';
+    img.src=A+path+'?v=__ART_VERSION__';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry','lemon'];
   const JUICE=FRUIT_BY_TYPE.map((_,type)=>window.FruitPalette[type].juice);
@@ -117,7 +120,7 @@
 
         if(ready('burst'+w.type)){
           const s=Math.min(236,128+(w.strength||1)*30)*(w.range||1)*(.45+(1-Math.pow(1-p,3))*.72);
-          ctx.globalAlpha=p<.12?p/.12:Math.pow(k/.88,1.3);
+          ctx.globalAlpha=(p<.12?p/.12:Math.pow(k/.88,1.3))*(w.range>=3?.72:w.range>=2?.86:1);
           ctx.translate(w.x,w.y);ctx.rotate(w.rotation||0);
           ctx.drawImage(images['burst'+w.type],-s/2,-s/2,s,s);
           ctx.rotate(-(w.rotation||0));ctx.translate(-w.x,-w.y);
@@ -134,9 +137,15 @@
           ctx.fillStyle=p.color;ctx.strokeStyle='#fff5cf99';ctx.lineWidth=1.5;
           ctx.beginPath();ctx.moveTo(-p.r*1.35,p.r*.75);ctx.lineTo(p.r*1.45,0);ctx.lineTo(-p.r*.65,-p.r*.9);ctx.closePath();ctx.fill();ctx.stroke();
         }else{
-          const g=ctx.createRadialGradient(-2,-3,1,0,0,p.r*1.5);
-          g.addColorStop(0,'#fff7dd');g.addColorStop(.30,p.color);g.addColorStop(1,p.color);
-          ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,0,p.r*1.55,p.r*.76,0,0,Math.PI*2);ctx.fill();
+          const band=Math.max(3,Math.min(14,Math.round(p.r)));
+          const paintKey=p.color+':'+band;
+          let paint=juicePaints.get(paintKey);
+          if(!paint){
+            paint=ctx.createRadialGradient(-2,-3,1,0,0,band*1.5);
+            paint.addColorStop(0,'#fff7dd');paint.addColorStop(.30,p.color);paint.addColorStop(1,p.color);
+            juicePaints.set(paintKey,paint);
+          }
+          ctx.fillStyle=paint;ctx.beginPath();ctx.ellipse(0,0,p.r*1.55,p.r*.76,0,0,Math.PI*2);ctx.fill();
         }
         ctx.restore();
       }
