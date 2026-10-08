@@ -29,7 +29,7 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261007-juice-feedback7';
+    img.src=A+path+'?v=20261008-glowing-count8';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry','lemon'];
   const JUICE=FRUIT_BY_TYPE.map((_,type)=>window.FruitPalette[type].juice);

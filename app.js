@@ -224,14 +224,29 @@ function drawBackground(){if(ART&&ART.drawBackground(ctx,W,H))return;ctx.fillSty
 function drawHUD(){if(ART&&ART.drawHUD(ctx,{score,combo:COUNTER.badgeVisible?COUNTER.combo:0,comboScale:COUNTER.badgeScale,comboAlpha:COUNTER.badgeAlpha,startedShot,state}))return;ctx.textBaseline='middle';ctx.font='700 32px system-ui';ctx.fillStyle='#fff6db';ctx.fillText(`得分  ${score}`,24,48);ctx.textAlign='right';if(COUNTER.badgeVisible){ctx.font='900 42px system-ui';ctx.strokeStyle='#8f3c43';ctx.lineWidth=7;ctx.strokeText(`COMBO ×${combo}`,684,50);ctx.fillStyle='#fff09a';ctx.fillText(`COMBO ×${combo}`,684,50);}ctx.textAlign='center';if(!startedShot&&state==='playing'){ctx.font='600 24px system-ui';ctx.fillStyle='#fff7df';ctx.globalAlpha=.92;ctx.fillText('点击轨道方向发射水果 · 3个相同水果即可爆汁',360,1060);ctx.globalAlpha=1;}ctx.font='600 19px system-ui';ctx.fillStyle='#fff3ca';ctx.fillText('下一颗',610,1070);ctx.textAlign='left';}
 function drawCount(){
   if(!COUNTER.countVisible)return;
-  const c=COUNTER;
-  ctx.save();ctx.translate(c.x,c.y+(reducedMotion?0:c.countOffsetY));
+  const c=COUNTER,q=S.elimination,z=q.zone;
+  // Bound the entire treatment, including light and juice, outside the route.
+  ctx.save();ctx.beginPath();ctx.rect(z.x,z.y,z.width,z.height);ctx.clip();
+  ctx.translate(c.x,c.y+(reducedMotion?0:c.countOffsetY));
   const scale=reducedMotion?1:c.countScale;ctx.scale(scale,scale);ctx.globalAlpha=c.countAlpha;
+  const halo=ctx.createRadialGradient(0,16,3,0,16,70);
+  halo.addColorStop(0,'rgba(255,245,118,'+(.38*c.glowPulse)+')');
+  halo.addColorStop(.48,'rgba(255,148,37,'+(.26*c.glowPulse)+')');halo.addColorStop(1,'rgba(255,125,61,0)');
+  ctx.fillStyle=halo;ctx.beginPath();ctx.ellipse(0,16,76,44,0,0,Math.PI*2);ctx.fill();
+  if(!reducedMotion)for(const d of c.juiceDrops){
+    ctx.save();ctx.globalAlpha=c.countAlpha*d.alpha;ctx.translate(d.x,d.y);ctx.rotate(Math.atan2(d.y-18,d.x));
+    ctx.shadowColor=d.color;ctx.shadowBlur=9;ctx.fillStyle=d.color;ctx.beginPath();ctx.ellipse(0,0,d.radius*1.55,d.radius*.75,0,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;ctx.fillStyle='#fffce0';ctx.beginPath();ctx.arc(-d.radius*.25,-d.radius*.15,Math.max(1,d.radius*.28),0,Math.PI*2);ctx.fill();ctx.restore();
+  }
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
-  ctx.font='900 64px system-ui';ctx.strokeStyle='#793219';ctx.lineWidth=9;ctx.strokeText(String(c.total),0,0);
-  const fill=ctx.createLinearGradient(0,-28,0,26);fill.addColorStop(0,'#ffffff');fill.addColorStop(.5,'#fff2b0');fill.addColorStop(1,'#ffc247');
-  ctx.fillStyle=fill;ctx.fillText(String(c.total),0,0);
-  ctx.font='900 21px system-ui';ctx.lineWidth=4;const label=c.combo>=2?'连消累计':'消除';ctx.strokeText(label,0,44);ctx.fillStyle='#fff3cf';ctx.fillText(label,0,44);
+  const fill=ctx.createLinearGradient(0,-28,0,57);fill.addColorStop(0,'#ffffff');fill.addColorStop(.5,'#fff5b5');fill.addColorStop(1,'#ffb83e');
+  const text=(value,y,size)=>{
+    ctx.font='900 '+size+'px system-ui';ctx.shadowColor='#ffef75';ctx.shadowBlur=18*c.glowPulse;
+    ctx.strokeStyle='#a33a1d';ctx.lineWidth=size>40?7:4;ctx.strokeText(value,0,y);
+    ctx.fillStyle=fill;ctx.fillText(value,0,y);
+    ctx.shadowBlur=0;ctx.strokeStyle='#fff9d5';ctx.lineWidth=.7;ctx.strokeText(value,0,y);
+  };
+  text(String(c.total),0,q.numberSize);text(c.label,q.labelY,q.labelSize);
   ctx.restore();
 }
 function drawFX(){if(ART&&ART.drawFX(ctx,waves,particles))return;for(const w of waves){ctx.save();ctx.globalAlpha=Math.max(0,w.life/w.max)*.28;ctx.strokeStyle=w.color;ctx.lineWidth=8;circleStroke(w.x,w.y,w.r);ctx.restore();}for(const p of particles){ctx.save();ctx.globalAlpha=Math.min(.95,p.life/.66*1.25);ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(1.35,.75);ctx.fillStyle=p.color;circle(0,0,p.r);ctx.restore();}}
@@ -289,7 +304,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&paused){document.ge
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state!=='win'&&state!=='lose')setPaused(true);});
 if(new URLSearchParams(location.search).has('debug')){
   window.ZumaDebug={
-    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,leader:leaderSnapshot(),shooter:S.shooter,aim:{...aim},feedback:{total:COUNTER.total,countVisible:COUNTER.countVisible,badgeVisible:COUNTER.badgeVisible,scale:COUNTER.countScale,life:COUNTER.life,badgeLife:COUNTER.badgeLife},effects:{bonusBursts:waves.filter(w=>w.bonus).length,particles:particles.length,bursts:waves.length,pulsesEmitted:pulseEvents,pendingPulses:pulseQueue.reduce((n,p)=>n+p.remaining,0),muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
+    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,leader:leaderSnapshot(),shooter:S.shooter,aim:{...aim},feedback:{x:COUNTER.x,y:COUNTER.y,label:COUNTER.label,total:COUNTER.total,countVisible:COUNTER.countVisible,badgeVisible:COUNTER.badgeVisible,scale:COUNTER.countScale,life:COUNTER.life,badgeLife:COUNTER.badgeLife},effects:{bonusBursts:waves.filter(w=>w.bonus).length,particles:particles.length,bursts:waves.length,pulsesEmitted:pulseEvents,pendingPulses:pulseQueue.reduce((n,p)=>n+p.remaining,0),muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
     pointAt,
     hold:(value=true)=>{debugHold=value;},
     aimAt:(x,y)=>{aim={x,y};render();},
@@ -315,7 +330,7 @@ async function start(){
     else if(scene==='combo3'){
       d.load({fruits:[0,0,4,4,3,3,3,4,0].map((type,i)=>({type,d:1050+i*54}))});
       d.resolveAt(5);for(let i=0;i<300&&d.snapshot().combo<3;i++)d.step(1/60);
-      d.step(.34);
+      d.step(.32);d.step(.07);
     }
     else if(scene==='win') {d.load({fruits:[],score:2460,maxCombo:4});d.step(.001);d.step(.5);}
     else if(scene==='lose'){d.load({fruits:[{type:1,d:totalLen-S.leader.gap-11}],score:1280,maxCombo:3});d.step(.001);d.step(.5);}
