@@ -20,6 +20,19 @@ button:focus-visible{outline:3px solid #fff7cb;outline-offset:2px}
 .panel label{display:flex;align-items:center;gap:12px;margin:18px 0;font-size:clamp(18px,4vw,26px)}
 .panel input{width:24px;height:24px;accent-color:#f6a028}
 .panel-button{position:relative;display:block;margin:20px auto 0;width:100%;height:54px;font-size:20px}
+#start-panel{position:absolute;z-index:6;inset:0;background:radial-gradient(ellipse at center,#13251b44,#0b241bc9);text-align:center}
+#start-card{position:absolute;left:9%;top:20%;width:82%;height:60%;background:transparent url('./assets/resources/art/ui/result_board_v2.webp') center/100% 100% no-repeat;filter:drop-shadow(0 12px 16px #09190bb0)}
+#start-title{position:absolute;top:12%;left:4%;width:92%;margin:0;color:#fff1b7;font-size:7.1cqw;line-height:1.3;letter-spacing:.025em;text-shadow:0 3px 0 #733815,0 0 14px #a7632e88}
+#start-fruits{position:absolute;top:30%;left:13%;width:74%;height:27%;display:flex;align-items:center;justify-content:center;gap:1%;filter:drop-shadow(0 7px 6px #65341666)}
+#start-fruits img{width:32%;height:100%;object-fit:contain;min-width:0}
+.start-tagline{position:absolute;top:61%;width:100%;margin:0;color:#a75524;font-weight:900;font-size:3.9cqw;letter-spacing:.03em}
+.start-instruction{position:absolute;top:68%;left:11%;width:78%;margin:0;color:#775030;font-weight:700;font-size:2.75cqw;line-height:1.65}
+#start-play{left:28%;top:70%;width:44%;height:7.5%;font-size:4.1cqw;border-radius:999px}
+#settings-panel{left:12%;top:27%;width:76%;height:45%;padding:10% 12% 12%;background:transparent url('./assets/resources/art/ui/result_board_v2.webp') center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:0 0 0 100vmax #102118a8;filter:drop-shadow(0 9px 15px #071b0ca8)}
+#settings-panel h2{margin:0 0 7%;font-size:5.8cqw;color:#fff1bb;text-shadow:0 2px 0 #713914}
+#settings-panel label{justify-content:center;color:#815028;font-size:3.35cqw;font-weight:800;margin:7% 0}
+#settings-panel input{width:4.2cqw;height:4.2cqw}
+#settings-panel .panel-button{height:14%;font-size:3.5cqw;margin-top:9%}
 #pause-panel{position:absolute;z-index:5;inset:0;text-align:center;background:radial-gradient(ellipse at center,#19381c66,#0f251ab5);backdrop-filter:blur(2px)}
 #pause-card{position:absolute;background:transparent url('./assets/resources/art/ui/result_board_v2.webp') center/100% 100% no-repeat;filter:drop-shadow(0 10px 16px #091b0dbb)}
 #pause-title{position:absolute;left:0;width:100%;margin:0;transform:translateY(-50%);color:#fff1b7;font-size:6.65cqw;line-height:1.12;letter-spacing:.035em;text-shadow:0 3px 0 #713914,0 0 12px #46230666}
