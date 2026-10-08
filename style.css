@@ -28,7 +28,7 @@ button:focus-visible{outline:3px solid #fff7cb;outline-offset:2px}
 .start-tagline{position:absolute;top:61%;width:100%;margin:0;color:#a75524;font-weight:900;font-size:3.9cqw;letter-spacing:.03em}
 .start-instruction{position:absolute;top:68%;left:11%;width:78%;margin:0;color:#775030;font-weight:700;font-size:2.75cqw;line-height:1.65}
 #start-play{left:28%;top:70%;width:44%;height:7.5%;font-size:4.1cqw;border-radius:999px}
-#settings-panel{left:12%;top:27%;width:76%;height:45%;padding:10% 12% 12%;background:transparent url('./assets/resources/art/ui/result_board_v2.webp') center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:0 0 0 100vmax #102118a8;filter:drop-shadow(0 9px 15px #071b0ca8)}
+#settings-panel{left:14%;top:24%;width:72%;height:50.6%;padding:10% 12% 12%;background:transparent url('./assets/resources/art/ui/result_board_v2.webp') center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:0 0 0 100vmax #102118a8;filter:drop-shadow(0 9px 15px #071b0ca8)}
 #settings-panel h2{margin:0 0 7%;font-size:5.8cqw;color:#fff1bb;text-shadow:0 2px 0 #713914}
 #settings-panel label{justify-content:center;color:#815028;font-size:3.35cqw;font-weight:800;margin:7% 0}
 #settings-panel input{width:4.2cqw;height:4.2cqw}
