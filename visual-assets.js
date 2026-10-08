@@ -29,7 +29,7 @@
     const img=new Image(); images[key]=img;
     img.onload=()=>{loaded++;settle();};
     img.onerror=()=>{failed++;console.warn('[fruit-art] Missing:',path);settle();};
-    img.src=A+path+'?v=20261008-glowing-count8';
+    img.src=A+path+'?v=20261008-combo-radius9-4ee53a9';
   }
   const FRUIT_BY_TYPE=['watermelon','orange','grape','strawberry','lemon'];
   const JUICE=FRUIT_BY_TYPE.map((_,type)=>window.FruitPalette[type].juice);
@@ -109,21 +109,21 @@
         const k=Math.max(0,w.life/w.max),p=1-k;
         ctx.save();
         // bright core flash
-        const glow=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,56+p*35);
+        const glow=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,(56+p*35)*(w.range||1));
         const flash=Math.max(0,1-p/.45);
         glow.addColorStop(0,'rgba(255,255,235,'+(0.65*flash)+')');
         glow.addColorStop(.22,JUICE[w.type]+Math.round(flash*130).toString(16).padStart(2,'0'));glow.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.fillStyle=glow;ctx.beginPath();ctx.arc(w.x,w.y,62+p*38,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=glow;ctx.beginPath();ctx.arc(w.x,w.y,(62+p*38)*(w.range||1),0,Math.PI*2);ctx.fill();
 
         if(ready('burst'+w.type)){
-          const s=(w.bonus?Math.min(310,218+(w.strength||1)*24):Math.min(236,128+(w.strength||1)*30))*(.45+(1-Math.pow(1-p,3))*.72);
+          const s=Math.min(236,128+(w.strength||1)*30)*(w.range||1)*(.45+(1-Math.pow(1-p,3))*.72);
           ctx.globalAlpha=p<.12?p/.12:Math.pow(k/.88,1.3);
           ctx.translate(w.x,w.y);ctx.rotate(w.rotation||0);
           ctx.drawImage(images['burst'+w.type],-s/2,-s/2,s,s);
           ctx.rotate(-(w.rotation||0));ctx.translate(-w.x,-w.y);
         }
         ctx.globalAlpha=Math.max(0,1-p/.58)*.38;ctx.strokeStyle=JUICE[w.type];ctx.lineWidth=5-p*3;
-        ctx.beginPath();ctx.arc(w.x,w.y,28+p*66,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.arc(w.x,w.y,(28+p*66)*(w.range||1),0,Math.PI*2);ctx.stroke();
         ctx.restore();
       }
 

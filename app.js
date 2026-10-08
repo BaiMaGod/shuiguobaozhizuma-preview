@@ -10,7 +10,6 @@ const G=window.FruitConfig;
 const CFG={fruitR:G.fruitRadius,spacing:G.fruitSpacing,collisionR:G.collisionRadius,baseSpeed:G.baseChainSpeed,pullSpeed:G.pullbackSpeed,projectileSpeed:G.projectileSpeed,initial:G.initialFruitCount,total:G.totalFruitCount,match:G.matchCount,insertDelay:G.insertDuration,matchDelay:G.matchHoldDuration,score:G.baseScorePerFruit,losePadding:G.losePadding};
 const FRUITS=window.FruitTypes;
 const COLORS=window.FruitPalette;
-let pulseQueue=[],pulseEvents=0;
 // Invisible movement spline aligned to the road baked into the orchard background.
 const control=S.track;
 const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
@@ -37,15 +36,11 @@ function findMatch(index){if(index<0||index>=fruits.length)return null;const t=f
 function insertFruit(type,index,renderD){index=Math.max(0,Math.min(index,fruits.length));let target=0;if(!fruits.length)target=Math.max(0,renderD);else if(index<fruits.length){target=fruits[index].d-CFG.spacing;for(let i=0;i<index;i++)fruits[i].d-=CFG.spacing;}else{const old=fruits.at(-1).d;for(const f of fruits)f.d-=CFG.spacing;target=old;}const f=mkFruit(type,target);f.renderD=renderD;fruits.splice(index,0,f);return f;}
 function beginMatch(m){
   combo++;maxCombo=Math.max(maxCombo,combo);currentMatch=m;state='resolving';
-  stateTimer=CFG.matchDelay+(combo-1)*FEEDBACK.comboPulseInterval;
+  stateTimer=CFG.matchDelay;
   const strength=1+(combo-1)*.22;
   const matchedCenter=fruits[Math.floor((m.left+m.right)/2)],countPoint=pointAt(matchedCenter.renderD);
   COUNTER.match(m.count,combo,countPoint.x,countPoint.y);
-  for(let i=m.left;i<=m.right;i++){fruits[i].matching=true;fruits[i].matchAge=0;const p=pointAt(fruits[i].renderD);burst(p.x,p.y,fruits[i].type,strength);}
-  if(combo>1){
-    const center=fruits[Math.floor((m.left+m.right)/2)],p=pointAt(center.renderD);
-    pulseQueue.push({x:p.x,y:p.y,type:center.type,combo,remaining:combo-1,index:0,wait:FEEDBACK.comboPulseInterval,strength});
-  }
+  for(let i=m.left;i<=m.right;i++){fruits[i].matching=true;fruits[i].matchAge=0;const p=pointAt(fruits[i].renderD);burst(p.x,p.y,fruits[i].type,1,combo);}
   AUDIO.playJuice(strength,combo);
   if(combo>=2&&!reducedMotion){shake=.11;shakeMag=Math.min(6,2+combo*.8);}
 }
@@ -73,18 +68,20 @@ function updatePull(dt){
   const shift=Math.min(gap,CFG.pullSpeed*dt);
   for(let i=b;i<fruits.length;i++)fruits[i].d-=shift;
 }
-function burst(x,y,type,str=1,bonus=false){
-  if(bonus){
-    // Retire old droplets rather than dropping the user's bonus spray.
-    particles.splice(0,Math.max(0,particles.length-(FEEDBACK.maxParticles-FEEDBACK.bonusParticleReserve)));
-    if(waves.length>=FEEDBACK.maxBursts)waves.shift();
+// Exactly one actual elimination splash per fruit; combo determines visual reach.
+function burst(x,y,type,str=1,combo=1){
+  const range=Math.max(1,Math.floor(combo)),c=COLORS[type],target=Math.min(40,Math.round(18+str*7));
+  particles.splice(0,Math.max(0,particles.length-(FEEDBACK.maxParticles-target)));
+  const count=Math.min(target,FEEDBACK.maxParticles-particles.length);
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2,s=(145+Math.random()*(215+str*34))*range,life=.30+Math.random()*.28;
+    particles.push({x:x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*16,vx:Math.cos(a)*s,vy:Math.sin(a)*s-65*range,
+      g:430+Math.random()*270,life,max:life,r:3.4+Math.random()*(7.5+str),color:i%5===0?c.accent:c.juice,
+      rot:Math.random()*6.28,spin:(Math.random()-.5)*12,type,shard:i%6===0});
   }
-  const c=COLORS[type],n=Math.min(bonus?FEEDBACK.bonusParticleReserve:40,Math.round((bonus?32:18)+str*7),FEEDBACK.maxParticles-particles.length);
-  for(let i=0;i<n;i++){
-    const aa=bonus?-Math.PI+Math.random()*Math.PI:Math.random()*Math.PI*2,s=(bonus?280:145)+Math.random()*(215+str*34),life=(bonus?.38:.30)+Math.random()*.28;
-    particles.push({x:x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*16,vx:Math.cos(aa)*s,vy:Math.sin(aa)*s-65,g:430+Math.random()*270,life,max:life,r:(bonus?5:3.4)+Math.random()*(7.5+str),color:i%5===0?c.accent:c.juice,rot:Math.random()*6.28,spin:(Math.random()-.5)*12,type,shard:i%6===0});
-  }
-  if(waves.length<FEEDBACK.maxBursts)waves.push({x,y,r:10,life:bonus?FEEDBACK.bonusBurstLife:FEEDBACK.burstLife,max:bonus?FEEDBACK.bonusBurstLife:FEEDBACK.burstLife,bonus,color:c.juice,type,strength:str,rotation:(Math.random()-.5)*.7});
+  if(waves.length>=FEEDBACK.maxBursts)waves.shift();
+  waves.push({x,y,r:10*range,range,life:FEEDBACK.burstLife,max:FEEDBACK.burstLife,
+    color:c.juice,type,strength:str,rotation:(Math.random()-.5)*.7});
 }
 function fire(x,y){
   if(paused||state!=='playing'||projectile)return;
@@ -98,7 +95,7 @@ function fire(x,y){
 function updateProjectile(dt){const p=projectile;if(!p||state!=='playing')return;p.x+=p.vx*dt;p.y+=p.vy*dt;let hit=-1,best=Infinity;const rr=CFG.collisionR**2;for(let i=0;i<fruits.length;i++){const fp=pointAt(fruits[i].renderD),dx=p.x-fp.x,dy=p.y-fp.y,d2=dx*dx+dy*dy;if(d2<=rr&&d2<best){best=d2;hit=i;}}if(hit>=0){const h=fruits[hit],hp=pointAt(h.renderD),relx=p.x-hp.x,rely=p.y-hp.y,dot=relx*hp.tx+rely*hp.ty,idx=dot>0?hit+1:hit;const ins=insertFruit(p.type,idx,h.renderD);AUDIO.playImpact();projectile=null;pendingId=ins.id;state='inserting';stateTimer=CFG.insertDelay;return;}if(p.x<-80||p.x>W+80||p.y<-80||p.y>H+80)projectile=null;}
 function updateState(dt){if(state==='inserting'){stateTimer-=dt;if(stateTimer<=0){const i=fruits.findIndex(f=>f.id===pendingId),m=findMatch(i);m?beginMatch(m):finishCombo();}}else if(state==='resolving'){stateTimer-=dt;if(stateTimer<=0)finishMatch();}else if(state==='pulling')updatePull(dt);}
 function endGame(win){
-  COUNTER.clear();pulseQueue=[];
+  COUNTER.clear();
   AUDIO.playResult(win);
   projectile=null;state=win?'win':'lose';result=win?'爆汁成功！':'还差一点！';
   restartBtn.hidden=false;swapBtn.disabled=true;
@@ -108,7 +105,7 @@ function endGame(win){
   document.getElementById('settings').disabled=true;
   shake=reducedMotion?0:.14;shakeMag=win?3:7;
 }
-function reset(){AUDIO.stopAll();COUNTER.clear();leaderClock=0;pulseQueue=[];pulseEvents=0;setPaused(false);document.getElementById('settings-panel').hidden=true;document.getElementById('result-summary').hidden=true;document.getElementById('pause').disabled=false;document.getElementById('settings').disabled=false;fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];muzzleFlash=null;score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;recoil=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
+function reset(){AUDIO.stopAll();COUNTER.clear();leaderClock=0;setPaused(false);document.getElementById('settings-panel').hidden=true;document.getElementById('result-summary').hidden=true;document.getElementById('pause').disabled=false;document.getElementById('settings').disabled=false;fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];muzzleFlash=null;score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;recoil=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
 function update(dt){
   if(paused||debugHold)return;
   if(shake>0)shake=Math.max(0,shake-dt);
@@ -144,20 +141,8 @@ function updateFX(dt){
   COUNTER.update(dt);
   if(muzzleFlash){muzzleFlash.life-=dt;if(muzzleFlash.life<=0)muzzleFlash=null;}
   for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.spin*dt;if(p.life<=0)particles.splice(i,1);}
-  for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.life-=dt;w.r+=220*dt;if(w.life<=0)waves.splice(i,1);}
-  for(let i=pulseQueue.length-1;i>=0;i--){
-    const pulse=pulseQueue[i];pulse.wait-=dt;
-    while(pulse.remaining>0&&pulse.wait<=0){
-      pulse.index++;pulse.remaining--;pulseEvents++;
-      const power=pulse.strength+.85+pulse.index*.18;
-      burst(pulse.x+(pulse.index%2?16:-16),pulse.y-10,pulse.type,power,true);COUNTER.pulse();AUDIO.playJuice(power,pulse.combo,pulse.index);
-      if(!reducedMotion){shake=.11;shakeMag=Math.min(7,2+power*1.4);}
-      pulse.wait+=FEEDBACK.comboPulseInterval;
-    }
-    if(!pulse.remaining)pulseQueue.splice(i,1);
-  }
+  for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.life-=dt;w.r+=220*dt*w.range;if(w.life<=0)waves.splice(i,1);}
 }
-
 function leaderSnapshot(){
   const front=fruits.at(-1);if(!front)return null;
   const distance=front.d+S.leader.gap,p=pointAt(front.renderD+S.leader.gap);
@@ -304,7 +289,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&paused){document.ge
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state!=='win'&&state!=='lose')setPaused(true);});
 if(new URLSearchParams(location.search).has('debug')){
   window.ZumaDebug={
-    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,leader:leaderSnapshot(),shooter:S.shooter,aim:{...aim},feedback:{x:COUNTER.x,y:COUNTER.y,label:COUNTER.label,total:COUNTER.total,countVisible:COUNTER.countVisible,badgeVisible:COUNTER.badgeVisible,scale:COUNTER.countScale,life:COUNTER.life,badgeLife:COUNTER.badgeLife},effects:{bonusBursts:waves.filter(w=>w.bonus).length,particles:particles.length,bursts:waves.length,pulsesEmitted:pulseEvents,pendingPulses:pulseQueue.reduce((n,p)=>n+p.remaining,0),muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
+    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,leader:leaderSnapshot(),shooter:S.shooter,aim:{...aim},feedback:{x:COUNTER.x,y:COUNTER.y,label:COUNTER.label,total:COUNTER.total,countVisible:COUNTER.countVisible,badgeVisible:COUNTER.badgeVisible,scale:COUNTER.countScale,life:COUNTER.life,badgeLife:COUNTER.badgeLife},effects:{particles:particles.length,bursts:waves.length,ranges:waves.map(w=>w.range),muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
     pointAt,
     hold:(value=true)=>{debugHold=value;},
     aimAt:(x,y)=>{aim={x,y};render();},
