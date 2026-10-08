@@ -183,7 +183,7 @@
       label(String(score),p.x+p.width/2,p.y+62,34);
       if(combo>=2){
       const cx=c.x+c.width/2,cy=c.y+c.height/2;ctx.save();ctx.translate(cx,cy);ctx.scale(data.comboScale||1,data.comboScale||1);ctx.translate(-cx,-cy);ctx.globalAlpha=data.comboAlpha??1;
-      if(ready('comboSplash'))ctx.drawImage(images.comboSplash,c.x,c.y,c.width,c.height);
+      if(ready('comboSplash'))ctx.drawImage(images.comboSplash,c.x+25,c.y,c.width-50,c.height);
       else plaque(ctx,c.x,c.y,c.width,c.height,'#ff9c26','#b64213');
       label('连击 ×'+combo,c.x+c.width/2,c.y+65,29);ctx.restore();
       }
