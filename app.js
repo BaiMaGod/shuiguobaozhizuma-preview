@@ -4,7 +4,8 @@ const S=window.FruitLayout,W=S.width,H=S.height,SX=S.shooter.x,SY=S.shooter.y;
 const ART=window.FruitArt||null;
 const AUDIO=new window.JuiceAudio();
 const COUNTER=new window.EliminationFeedback();
-let leaderClock=0;
+let leaderClock=0,atHome=false;
+const runtimePerf={frames:0,elapsed:0,fps:0,slowFrames:0,lastRenderMs:0};
 const FEEDBACK=window.FruitFeedback;
 const G=window.FruitConfig;
 const CFG={fruitR:G.fruitRadius,spacing:G.fruitSpacing,collisionR:G.collisionRadius,baseSpeed:G.baseChainSpeed,pullSpeed:G.pullbackSpeed,projectileSpeed:G.projectileSpeed,initial:G.initialFruitCount,total:G.totalFruitCount,match:G.matchCount,insertDelay:G.insertDuration,matchDelay:G.matchHoldDuration,score:G.baseScorePerFruit,losePadding:G.losePadding};
@@ -84,7 +85,7 @@ function burst(x,y,type,str=1,combo=1){
     color:c.juice,type,strength:str,rotation:(Math.random()-.5)*.7});
 }
 function fire(x,y){
-  if(paused||state!=='playing'||projectile)return;
+  if(atHome||paused||state!=='playing'||projectile)return;
   let dx=x-SX,dy=y-SY,l=Math.hypot(dx,dy);if(l<20)return;
   dx/=l;dy/=l;
   const muzzle=S.shooter.muzzleDistance;
@@ -107,7 +108,7 @@ function endGame(win){
 }
 function reset(){AUDIO.stopAll();COUNTER.clear();leaderClock=0;setPaused(false);document.getElementById('settings-panel').hidden=true;document.getElementById('result-summary').hidden=true;document.getElementById('pause').disabled=false;document.getElementById('settings').disabled=false;fruits=[];spawned=0;history=[];projectile=null;particles=[];waves=[];muzzleFlash=null;score=0;combo=0;maxCombo=0;state='playing';stateTimer=0;pendingId=-1;currentMatch=null;pullback=null;shake=0;shakeMag=0;recoil=0;startedShot=false;result=null;seed();current=shooterType();next=shooterType();restartBtn.hidden=true;swapBtn.disabled=false;last=performance.now();}
 function update(dt){
-  if(paused||debugHold)return;
+  if(atHome||paused||debugHold)return;
   if(shake>0)shake=Math.max(0,shake-dt);
   if(recoil>0)recoil=Math.max(0,recoil-dt);
   if(state==='win'||state==='lose'){updateFX(dt);return;}
@@ -238,7 +239,15 @@ function drawFX(){if(ART&&ART.drawFX(ctx,waves,particles))return;for(const w of 
 function circleStroke(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();}
 function drawResult(){if(ART&&ART.drawResult(ctx,{result,score,maxCombo,state}))return;if(!result)return;ctx.save();ctx.fillStyle='#162620f8';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f6e4b2';roundedRect(70,365,580,440,26);ctx.fill();ctx.fillStyle='#31554a';roundedRect(82,377,556,416,20);ctx.fill();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='900 50px system-ui';ctx.fillStyle=state==='win'?'#fff09a':'#ffd2bd';ctx.fillText(result,360,465);ctx.font='600 28px system-ui';ctx.fillStyle='#fff';ctx.fillText(`最终得分：${score}`,360,565);ctx.fillText(`最大 Combo：×${Math.max(1,maxCombo)}`,360,615);ctx.font='500 20px system-ui';ctx.fillStyle='#d8eadf';ctx.fillText('点击下方按钮重新开始',360,690);ctx.restore();}
 function render(){ctx.save();let sx=0,sy=0;if(!reducedMotion&&shake>0){sx=(Math.random()-.5)*shakeMag*2;sy=(Math.random()-.5)*shakeMag*2;}ctx.translate(sx,sy);drawBackground();drawTrack();drawMachine();for(const f of fruits){const p=pointAt(f.renderD),pulse=f.matching?1+Math.sin(Math.min(1,f.matchAge/CFG.matchDelay)*Math.PI)*.2:1;drawFruit(p.x,p.y,f.type,CFG.fruitR,f.matching?.88:1,pulse);}drawLeader();if(projectile){if(ART)ART.drawProjectileTrail(ctx,projectile,reducedMotion);drawFruit(projectile.x,projectile.y,projectile.type,29);}drawFX();if(ART)ART.drawShotFlash(ctx,muzzleFlash);drawShooter();ctx.restore();drawHUD();drawCount();drawResult();if(new URLSearchParams(location.search).has('track'))drawTrackDebug();}
-function frame(now){let dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;update(dt);render();requestAnimationFrame(frame);}
+function frame(now){
+  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
+  const beforeRender=performance.now();update(dt);render();
+  runtimePerf.lastRenderMs=performance.now()-beforeRender;
+  runtimePerf.frames++;runtimePerf.elapsed+=dt;
+  if(dt>.033)runtimePerf.slowFrames++;
+  if(runtimePerf.elapsed>=1){runtimePerf.fps=Math.round(runtimePerf.frames/runtimePerf.elapsed);runtimePerf.frames=0;runtimePerf.elapsed=0;}
+  requestAnimationFrame(frame);
+}
 function localPoint(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
 function setPaused(value){
   if(value)AUDIO.stopAll();
@@ -272,25 +281,27 @@ placeButton('resume',S.pause.button.x,S.pause.button.y,S.pause.button.width,S.pa
 placeButton('pause-restart',260,S.pause.restartY-23,200,46);
 placeButton('swap',S.swap.x,S.swap.y,S.swap.width,S.swap.height);
 placeButton('restart',S.result.button.x,S.result.button.y,S.result.button.width,S.result.button.height);
-canvas.addEventListener('pointermove',ev=>{if(paused||state==='win'||state==='lose')return;const p=localPoint(ev);if(p.y<S.hudBottom||p.y>S.aimMaxY)return;aim.x=Math.max(10,Math.min(W-10,p.x));aim.y=p.y;});
-canvas.addEventListener('pointerdown',ev=>{if(paused||state==='win'||state==='lose')return;const p=localPoint(ev);if(p.y<S.hudBottom||p.y>S.aimMaxY)return;aim.x=p.x;aim.y=p.y;fire(p.x,p.y);});
-swapBtn.addEventListener('click',ev=>{ev.stopPropagation();if(paused||state!=='playing'||projectile)return;[current,next]=[next,current];AUDIO.playSwap();});
+canvas.addEventListener('pointermove',ev=>{if(atHome||paused||state==='win'||state==='lose')return;const p=localPoint(ev);if(p.y<S.hudBottom||p.y>S.aimMaxY)return;aim.x=Math.max(10,Math.min(W-10,p.x));aim.y=p.y;});
+canvas.addEventListener('pointerdown',ev=>{if(atHome||paused||state==='win'||state==='lose')return;const p=localPoint(ev);if(p.y<S.hudBottom||p.y>S.aimMaxY)return;aim.x=p.x;aim.y=p.y;fire(p.x,p.y);});
+swapBtn.addEventListener('click',ev=>{ev.stopPropagation();if(atHome||paused||state!=='playing'||projectile)return;[current,next]=[next,current];AUDIO.playSwap();});
 restartBtn.addEventListener('click',ev=>{ev.stopPropagation();reset();});
 document.getElementById('reset').addEventListener('click',reset);
-document.getElementById('pause').addEventListener('click',()=>{if(state==='win'||state==='lose')return;if(!document.getElementById('settings-panel').hidden){document.getElementById('settings-panel').hidden=true;setPaused(false);return;}setPaused(!paused);});
+document.getElementById('start-play').addEventListener('click',()=>{atHome=false;document.getElementById('start-panel').hidden=true;last=performance.now();});
+document.getElementById('pause').addEventListener('click',()=>{if(atHome||state==='win'||state==='lose')return;if(!document.getElementById('settings-panel').hidden){document.getElementById('settings-panel').hidden=true;setPaused(false);return;}setPaused(!paused);});
 document.getElementById('resume').addEventListener('click',()=>setPaused(false));
 document.getElementById('pause-restart').addEventListener('click',reset);
 document.getElementById('sound').addEventListener('click',()=>setMuted(!muted));
 document.getElementById('sound-setting').addEventListener('change',e=>setMuted(!e.target.checked));
 document.getElementById('motion-setting').addEventListener('change',e=>{reducedMotion=!e.target.checked;});
-document.getElementById('settings').addEventListener('click',()=>{setPaused(true);document.getElementById('settings-panel').hidden=false;document.getElementById('pause-panel').hidden=true;});
+document.getElementById('settings').addEventListener('click',()=>{if(atHome)return;setPaused(true);document.getElementById('settings-panel').hidden=false;document.getElementById('pause-panel').hidden=true;});
 document.getElementById('close-settings').addEventListener('click',()=>{document.getElementById('settings-panel').hidden=true;setPaused(false);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&paused){document.getElementById('settings-panel').hidden=true;setPaused(false);}if(e.key==='Tab'&&paused&&document.getElementById('settings-panel').hidden){e.preventDefault();const a=document.getElementById('resume'),b=document.getElementById('pause-restart');(document.activeElement===a?b:a).focus?.();}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state!=='win'&&state!=='lose')setPaused(true);});
 if(new URLSearchParams(location.search).has('debug')){
   window.ZumaDebug={
-    snapshot:()=>({state,paused,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,leader:leaderSnapshot(),shooter:S.shooter,aim:{...aim},feedback:{x:COUNTER.x,y:COUNTER.y,label:COUNTER.label,total:COUNTER.total,countVisible:COUNTER.countVisible,badgeVisible:COUNTER.badgeVisible,scale:COUNTER.countScale,life:COUNTER.life,badgeLife:COUNTER.badgeLife},effects:{particles:particles.length,bursts:waves.length,ranges:waves.map(w=>w.range),muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
+    snapshot:()=>({state,paused,atHome,score,combo,maxCombo,spawned,current,next,projectile:projectile?{...projectile}:null,fruits:fruits.map(f=>({...f,point:pointAt(f.renderD)})),control,totalLen,leader:leaderSnapshot(),shooter:S.shooter,aim:{...aim},feedback:{x:COUNTER.x,y:COUNTER.y,label:COUNTER.label,total:COUNTER.total,countVisible:COUNTER.countVisible,badgeVisible:COUNTER.badgeVisible,scale:COUNTER.countScale,life:COUNTER.life,badgeLife:COUNTER.badgeLife},effects:{particles:particles.length,bursts:waves.length,ranges:waves.map(w=>w.range),muzzleFlash:muzzleFlash?{...muzzleFlash}:null},recoil}),
     pointAt,
+    performance:()=>({...runtimePerf,art:ART?ART.status():null}),
     hold:(value=true)=>{debugHold=value;},
     aimAt:(x,y)=>{aim={x,y};render();},
     fireAt:(x,y)=>{aim={x,y};fire(x,y);},
@@ -303,7 +314,10 @@ if(new URLSearchParams(location.search).has('debug')){
 }
 async function start(){
   if(ART&&ART.whenReady)await ART.whenReady();
-  buildTrack();reset();document.getElementById('loading').hidden=true;setMuted(false);requestAnimationFrame(frame);
+  buildTrack();reset();
+  atHome=!new URLSearchParams(location.search).has('debug');
+  document.getElementById('start-panel').hidden=!atHome;
+  document.getElementById('loading').hidden=true;setMuted(false);requestAnimationFrame(frame);
   // Opt-in, frozen visual QA fixtures. Normal gameplay never enters this branch.
   const query=new URLSearchParams(location.search);
   if(query.has('debug')){
