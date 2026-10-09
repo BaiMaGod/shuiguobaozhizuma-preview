@@ -1,4 +1,5 @@
 # Public runner: private source checkout is read-only and ephemeral.
+# AI browser run: full physical touch / natural cascade, startup overlay synchronized
 name: Deploy Fruit Zuma V1.1 from PRIVATE source via preview runner
 on:
   workflow_dispatch:
