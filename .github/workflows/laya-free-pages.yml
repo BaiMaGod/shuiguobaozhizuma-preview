@@ -17,7 +17,7 @@ jobs:
   build-real-laya-and-deploy:
     name: Official Laya CLI → real mobile QA → free Pages
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 80
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -104,6 +104,16 @@ jobs:
         env:
           BOT_RUNS_PER_LEVEL: '2'
           BOT_LEVELS: '1,4,6,8,10'
+          BOT_MAX_SIM_SECONDS: '420'
+          BOT_PROFILE: regular
+        run: npm run test:bot
+
+      - name: REGULAR stage 5 vs stage 6 independent seed calibration
+        working-directory: private-game
+        env:
+          BOT_RUNS_PER_LEVEL: '8'
+          BOT_TRIAL_OFFSET: '2'
+          BOT_LEVELS: '5,6'
           BOT_MAX_SIM_SECONDS: '420'
           BOT_PROFILE: regular
         run: npm run test:bot
