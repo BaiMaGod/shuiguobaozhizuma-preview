@@ -1,5 +1,5 @@
 # Public runner: private source checkout is read-only and ephemeral.
-name: Build PRIVATE Fruit Zuma with LayaAir 3.4 and deploy Pages
+name: Deploy Fruit Zuma V1.1 from PRIVATE source via preview runner
 on:
   workflow_dispatch:
   push:
@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BaiMaGod/shuiguobaozhizuma
-          ref: e371c7bbf8cf307a6e7329dc1807d5064e245ca9
+          ref: 62afc0d4b58f9266cfe513f9900e06465f37359a
           token: ${{ secrets.LAYA_SOURCE_READ_TOKEN }}
           persist-credentials: false
           path: private-game
