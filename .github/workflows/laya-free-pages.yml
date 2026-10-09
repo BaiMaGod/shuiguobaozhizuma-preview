@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: BaiMaGod/shuiguobaozhizuma
-          ref: 7ac24ee6a641f8bc41ec3efe930442410709e64a
+          ref: 9ee743a34aa057a5eee73a172839130dc6b8082d
           token: ${{ secrets.LAYA_SOURCE_READ_TOKEN }}
           persist-credentials: false
           path: private-game
