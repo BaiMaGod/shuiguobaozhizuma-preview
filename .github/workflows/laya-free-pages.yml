@@ -2,6 +2,9 @@
 name: Build PRIVATE Fruit Zuma with LayaAir 3.4 and deploy Pages
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/laya-free-pages.yml']
 permissions:
   contents: read
   pages: write
