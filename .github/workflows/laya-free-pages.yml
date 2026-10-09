@@ -1,0 +1,112 @@
+# Public runner: private source checkout is read-only and ephemeral.
+name: Build PRIVATE Fruit Zuma with LayaAir 3.4 and deploy Pages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: fruit-zuma-official-laya-pages
+  cancel-in-progress: false
+jobs:
+  build-real-laya-and-deploy:
+    name: Official Laya CLI → real mobile QA → free Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Require read-only source token
+        shell: bash
+        env:
+          READ_TOKEN: ${{ secrets.LAYA_SOURCE_READ_TOKEN }}
+        run: |
+          if [ -z "$READ_TOKEN" ]; then
+            echo "::error::Add LAYA_SOURCE_READ_TOKEN to this public preview repo Actions secrets. Fine-grained PAT: only BaiMaGod/shuiguobaozhizuma, Contents Read. Never paste a token into chat or Git."
+            exit 1
+          fi
+
+      - name: Checkout PRIVATE official game source
+        uses: actions/checkout@v4
+        with:
+          repository: BaiMaGod/shuiguobaozhizuma
+          ref: codex/layaair34-native-pipeline
+          token: ${{ secrets.LAYA_SOURCE_READ_TOKEN }}
+          persist-credentials: false
+          path: private-game
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Regression and art integrity checks
+        working-directory: private-game
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm test
+
+      - name: Install official LayaAir CLI 3.4.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/layabox/layaair-cli/master/install.sh -o "$RUNNER_TEMP/laya-install.sh"
+          bash "$RUNNER_TEMP/laya-install.sh"
+          echo "$HOME/.layaair" >> "$GITHUB_PATH"
+          "$HOME/.layaair/layaair" install 3.4.0
+          "$HOME/.layaair/layaair" list
+
+      - name: Build REAL LayaAir SDK Web game
+        working-directory: private-game
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          GITHUB_SHA="$SOURCE_SHA" npm run build
+          test -f .laya-release/web/libs/laya.core.js
+          test -f .laya-release/web/js/fruit-zuma-game.js
+          test -f .laya-release/web/resources/art/background/orchard_reference_v2.webp
+          if [ -f .laya-release/web/app.js ]; then
+            echo "::error::Legacy Canvas app.js is forbidden in native Laya release"
+            exit 1
+          fi
+
+      - name: Install real Chromium test runtime
+        working-directory: private-game
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Test real SDK rendering and gameplay in three mobile viewports
+        working-directory: private-game
+        run: npm run test:laya
+
+      - name: Fail-closed SDK browser and artifact integrity gate
+        working-directory: private-game
+        run: npm run release:verify
+
+      - name: Upload game screenshots only (no private source)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fruit-zuma-laya-real-qa
+          path: private-game/qa-evidence/laya34/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload verified Web game to Pages
+        if: success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: private-game/.laya-release/web
+
+      - name: Deploy Pages
+        if: success()
+        id: deploy
+        uses: actions/deploy-pages@v4
