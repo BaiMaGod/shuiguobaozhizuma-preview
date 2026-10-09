@@ -1,5 +1,5 @@
 # Public runner: private source checkout is read-only and ephemeral.
-# AI browser run: full physical touch / natural cascade, startup overlay synchronized
+# AI browser run: fix entrance starvation, real touch / natural cascade, startup synchronized
 name: Deploy Fruit Zuma V1.1 from PRIVATE source via preview runner
 on:
   workflow_dispatch:
@@ -120,6 +120,7 @@ jobs:
           path: |
             private-game/qa-evidence/bot-campaign/results.json
             private-game/qa-evidence/bot-campaign/summary.md
+            private-game/qa-evidence/bot-campaign/progress.ndjson
             private-game/qa-evidence/bot-campaign/*.png
           if-no-files-found: warn
           retention-days: 14
