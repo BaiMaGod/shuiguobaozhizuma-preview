@@ -17,7 +17,7 @@ jobs:
   build-real-laya-and-deploy:
     name: Official Laya CLI → real mobile QA → free Pages
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -99,6 +99,24 @@ jobs:
           BOT_PROFILE: expert
         run: npm run test:bot
 
+      - name: REGULAR bot physical-shot stratified challenge
+        working-directory: private-game
+        env:
+          BOT_RUNS_PER_LEVEL: '2'
+          BOT_LEVELS: '1,4,6,8,10'
+          BOT_MAX_SIM_SECONDS: '420'
+          BOT_PROFILE: regular
+        run: npm run test:bot
+
+      - name: NOVICE bot early-game and boss fairness samples
+        working-directory: private-game
+        env:
+          BOT_RUNS_PER_LEVEL: '2'
+          BOT_LEVELS: '1,6,10'
+          BOT_MAX_SIM_SECONDS: '420'
+          BOT_PROFILE: novice
+        run: npm run test:bot
+
       - name: Fail-closed SDK browser and artifact integrity gate
         working-directory: private-game
         run: npm run release:verify
@@ -118,10 +136,7 @@ jobs:
         with:
           name: fruit-zuma-physical-bot-balance
           path: |
-            private-game/qa-evidence/bot-campaign/results.json
-            private-game/qa-evidence/bot-campaign/summary.md
-            private-game/qa-evidence/bot-campaign/progress.ndjson
-            private-game/qa-evidence/bot-campaign/*.png
+            private-game/qa-evidence/bot-campaign/**
           if-no-files-found: warn
           retention-days: 14
 
