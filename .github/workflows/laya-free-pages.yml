@@ -118,6 +118,16 @@ jobs:
           BOT_PROFILE: regular
         run: npm run test:bot
 
+      - name: REGULAR stages 7 and 8 independent seed pressure comparison
+        working-directory: private-game
+        env:
+          BOT_RUNS_PER_LEVEL: '8'
+          BOT_TRIAL_OFFSET: '2'
+          BOT_LEVELS: '7,8'
+          BOT_MAX_SIM_SECONDS: '420'
+          BOT_PROFILE: regular
+        run: npm run test:bot
+
       - name: NOVICE bot early-game and boss fairness samples
         working-directory: private-game
         env:
@@ -126,6 +136,10 @@ jobs:
           BOT_MAX_SIM_SECONDS: '420'
           BOT_PROFILE: novice
         run: npm run test:bot
+
+      - name: Consolidate real bot balance evidence and inspect difficulty cliffs
+        working-directory: private-game
+        run: npm run report:bot
 
       - name: Fail-closed SDK browser and artifact integrity gate
         working-directory: private-game
